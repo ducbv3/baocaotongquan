@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo Cáo Vận Hành — Dashboard</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Thư viện Chart.js & PapaParse -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Splash Screen -->
+    <div id="splash" class="splash-overlay">
+        <div class="splash-particles" id="splashParticles"></div>
+        <div class="splash-cover">
+            <div class="sc-top">
+                <div class="sc-mark">TNT</div>
+                <div class="sc-badge">VÙNG TNT</div>
+            </div>
+            <div class="sc-kicker">Báo cáo Vận hành · Operations Report</div>
+            <h1 class="sc-title">Trung tâm Dữ liệu Vận hành<br><span>Dashboard Báo Cáo</span></h1>
+            <p class="sc-desc">Operations Analytics · Dữ liệu Mock</p>
+            <div class="sc-regions">
+                <span>Hà Nội</span><span>Hồ Chí Minh</span><span>Đà Nẵng</span><span>Cần Thơ</span>
+            </div>
+            <button class="splash-cta" onclick="dismissSplash()">Vào Dashboard
+                <span class="splash-cta-arrow">
+                    <svg viewBox="0 0 28 28" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="13" cy="13" r="6.5" stroke="#fff" stroke-opacity=".55" stroke-width="1.4"/>
+                        <circle class="cta-ripple" cx="13" cy="13" r="10.5" stroke="#fff" stroke-opacity=".35" stroke-width="1.2"/>
+                        <circle cx="13" cy="13" r="2" fill="#fff"/>
+                        <path d="M13.4 13.2 L22.5 16.1 L18.3 17.7 L16.7 22 Z" fill="#fff" stroke="#fff" stroke-width="1.1" stroke-linejoin="round"/>
+                    </svg>
+                </span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Topbar -->
+    <header class="topbar">
+        <div class="tb-brand">
+            <div class="tb-mark">TNT</div>
+            <div class="tb-titles">
+                <div class="tb-name">Báo cáo Vận hành</div>
+                <div class="tb-sub">Operations Analytics</div>
+            </div>
+            <span class="tb-badge">DEV</span>
+        </div>
+        <div class="tb-actions">
+            <div class="tb-status"><span class="tb-dot"></span><span class="last-update" id="lastUpdate">Đang tải…</span></div>
+            <button class="refresh-btn" id="refreshBtn" onclick="loadMockData()">
+                <span class="spin" id="spinIcon">🔄</span> Cập nhật
+            </button>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar"></nav>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Tổng quan -->
+        <div class="page active" id="p0">
+            <div class="page-header">
+                <h2 class="page-title">Tổng quan Vận hành</h2>
+                <div class="page-meta">Thống kê dữ liệu chung toàn vùng</div>
+            </div>
+
+            <!-- KPI Grid -->
+            <div class="kpi-grid" id="kpiOverview">
+                <!-- Sẽ được render qua JS -->
+            </div>
+
+            <!-- Charts & Tables -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 18px;">
+                <div class="chart-box">
+                    <h3>Sản lượng theo tuần</h3>
+                    <div class="csub">Biểu đồ khối lượng giao dịch 7 ngày gần nhất</div>
+                    <div class="chart-canvas-wrap">
+                        <canvas id="volChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-box">
+                    <h3>Tỉ lệ Giao Thành Công</h3>
+                    <div class="csub">So sánh các khu vực</div>
+                    <div class="chart-canvas-wrap">
+                        <canvas id="ratioChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bảng dữ liệu -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><div class="card-icon">📋</div> Dữ liệu chi tiết Tỉnh/Thành phố</div>
+                </div>
+                <div class="table-wrap">
+                    <table id="dataTableOverview">
+                        <thead>
+                            <tr>
+                                <th>Khu vực</th>
+                                <th>Tổng Đơn</th>
+                                <th>Đã Giao</th>
+                                <th>Đang Giao</th>
+                                <th>Tỉ lệ GTC</th>
+                                <th>Trạng Thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- JS render -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Các trang trống khác để chuyển tab -->
+        <div class="page" id="p1">
+            <div class="page-header"><h2 class="page-title">% GTC</h2></div>
+            <div class="card" style="padding: 20px; text-align: center; color: var(--text-sub);">
+                Dữ liệu Giao Thành Công chi tiết sẽ được hiển thị ở đây.
+            </div>
+        </div>
+        <!-- Thêm các page id từ p2 đến p14 nếu cần để map với nav items -->
+    </main>
+
+    <!-- JS -->
+    <script src="app.js"></script>
+</body>
+</html>
