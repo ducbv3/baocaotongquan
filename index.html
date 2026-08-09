@@ -79,6 +79,49 @@
                 <div class="page-meta">Thống kê dữ liệu chung toàn vùng</div>
             </div>
 
+            <!-- Bảng So Sánh Nhanh N-1 vs N-2 -->
+            <div class="compare-section" id="compareSection">
+                <div class="compare-header">
+                    <div class="compare-header-left">
+                        <div class="compare-icon">📊</div>
+                        <div>
+                            <h3 class="compare-title">Thống kê N-1 vs N-2 — Khu vực của bạn</h3>
+                            <div class="compare-subtitle" id="compareSubtitle">Mỗi chỉ số: ngày mới nhất sheet riêng vs ngày kế trước</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="compare-card">
+                    <div class="compare-card-top">
+                        <div class="compare-badge">📋 BẢNG SO SÁNH NHANH</div>
+                        <button class="compare-copy-btn" id="compareCopyBtn" onclick="copyCompareTable()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            <span id="copyBtnText">copy</span>
+                        </button>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="compare-table" id="compareTable">
+                            <thead>
+                                <tr>
+                                    <th>CHỈ SỐ</th>
+                                    <th>N-1</th>
+                                    <th>GIÁ TRỊ N-1</th>
+                                    <th>N-2</th>
+                                    <th>GIÁ TRỊ N-2</th>
+                                    <th>BIẾN ĐỘNG</th>
+                                    <th>ĐÁNH GIÁ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="compareTbody">
+                                <!-- JS render -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="compare-footer">
+                        <span class="compare-footer-link">Bảng tổng hợp chỉ số vùng</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- KPI Grid -->
             <div class="kpi-grid" id="kpiOverview">
                 <!-- Sẽ được render qua JS -->

@@ -17,6 +17,7 @@ NAV_GROUPS.forEach(g => {
 /* ===== INITIALIZATION ===== */
 document.addEventListener("DOMContentLoaded", () => {
     buildNav();
+    renderCompareTable();
     loadMockData(); // Bỏ setTimeout giả lập delay
 });
 
@@ -189,6 +190,7 @@ function processData(data) {
     renderKPIs();
     renderTable();
     renderCharts();
+    renderCompareTable();
     
     document.getElementById('lastUpdate').innerText = "Cập nhật: " + new Date().toLocaleTimeString('vi-VN');
     const btn = document.getElementById('refreshBtn');
@@ -305,4 +307,193 @@ function renderCharts() {
             }
         });
     }
+}
+
+/* ===== COMPARE TABLE (N-1 vs N-2) ===== */
+const COMPARE_DATA = [
+    {
+        name: 'GTC',
+        n1Date: '08/08/2026', n1Value: 71.2, n1Unit: '%',
+        n2Date: '07/08/2026', n2Value: 70.3, n2Unit: '%',
+        higherIsBetter: true, unit: '%'
+    },
+    {
+        name: 'FD Total',
+        n1Date: '08/08/2026', n1Value: 5.93, n1Unit: '%',
+        n2Date: '07/08/2026', n2Value: 6.01, n2Unit: '%',
+        higherIsBetter: false, unit: '%'
+    },
+    {
+        name: 'FD TTS',
+        n1Date: '08/08/2026', n1Value: 4.51, n1Unit: '%',
+        n2Date: '07/08/2026', n2Value: 3.69, n2Unit: '%',
+        higherIsBetter: false, unit: '%'
+    },
+    {
+        name: 'FD SME',
+        n1Date: '08/08/2026', n1Value: 8.16, n1Unit: '%',
+        n2Date: '07/08/2026', n2Value: 8.76, n2Unit: '%',
+        higherIsBetter: false, unit: '%'
+    },
+    {
+        name: 'FD Shopee',
+        n1Date: '08/08/2026', n1Value: 4.97, n1Unit: '%',
+        n2Date: '07/08/2026', n2Value: 5.12, n2Unit: '%',
+        higherIsBetter: false, unit: '%'
+    },
+    {
+        name: 'Aging >5N',
+        n1Date: '09/08/2026', n1Value: 35, n1Unit: ' đơn',
+        n2Date: '08/08/2026', n2Value: 15, n2Unit: ' đơn',
+        higherIsBetter: false, unit: ' đơn'
+    },
+    {
+        name: 'Rớt LC',
+        n1Date: '28/07/2026', n1Value: 126, n1Unit: ' đơn',
+        n2Date: '27/07/2026', n2Value: 198, n2Unit: ' đơn',
+        higherIsBetter: false, unit: ' đơn'
+    },
+    {
+        name: 'ODR TTS',
+        n1Date: '08/08/2026', n1Value: 96.5, n1Unit: '%',
+        n2Date: '07/08/2026', n2Value: 95.2, n2Unit: '%',
+        higherIsBetter: true, unit: '%'
+    },
+    {
+        name: 'OPR TTS',
+        n1Date: '08/08/2026', n1Value: 96.5, n1Unit: '%',
+        n2Date: '07/08/2026', n2Value: 97.5, n2Unit: '%',
+        higherIsBetter: true, unit: '%'
+    },
+    {
+        name: 'Leadtime KCT',
+        n1Date: '08/08/2026', n1Value: 3.24, n1Unit: 'h',
+        n2Date: '07/08/2026', n2Value: 3.14, n2Unit: 'h',
+        higherIsBetter: false, unit: 'h'
+    }
+];
+
+function renderCompareTable() {
+    const tbody = document.getElementById('compareTbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = COMPARE_DATA.map(row => {
+        const diff = row.n1Value - row.n2Value;
+        const absDiff = Math.abs(diff);
+        const isUp = diff > 0;
+        const unitLabel = row.unit;
+
+        // Format the diff value
+        let diffDisplay;
+        if (unitLabel === '%') {
+            diffDisplay = absDiff.toFixed(1) + '%';
+        } else if (unitLabel === 'h') {
+            diffDisplay = absDiff.toFixed(2) + 'h';
+        } else {
+            diffDisplay = Math.round(absDiff) + ' ' + row.unit.trim();
+        }
+
+        // Determine if the change is "good" or "bad"
+        let isGood;
+        if (row.higherIsBetter) {
+            isGood = isUp; // higher is better, so going up = good
+        } else {
+            isGood = !isUp; // lower is better, so going down = good
+        }
+
+        const direction = isUp ? 'tăng' : 'giảm';
+        const changeClass = isGood ? (isUp ? 'change-up' : 'change-down') : (isUp ? 'change-up-bad' : 'change-down-bad');
+        const evalDotClass = isGood ? 'good' : 'bad';
+        const evalTextClass = isGood ? 'eval-text-good' : 'eval-text-bad';
+        const evalLabel = isGood ? 'tốt' : 'tệ';
+
+        // Format values for display
+        const n1Display = unitLabel === '%' ? row.n1Value.toFixed(1) + '%'
+            : unitLabel === 'h' ? row.n1Value.toFixed(2) + 'h'
+            : Math.round(row.n1Value) + row.n1Unit;
+
+        const n2Display = unitLabel === '%' ? row.n2Value.toFixed(1) + '%'
+            : unitLabel === 'h' ? row.n2Value.toFixed(2) + 'h'
+            : Math.round(row.n2Value) + row.n2Unit;
+
+        return `
+            <tr>
+                <td class="metric-name">${row.name}</td>
+                <td class="date-cell">${row.n1Date}</td>
+                <td class="value-cell">${n1Display}</td>
+                <td class="date-cell">${row.n2Date}</td>
+                <td class="value-cell">${n2Display}</td>
+                <td class="change-cell ${changeClass}">${direction} ${diffDisplay} so N-1</td>
+                <td>
+                    <div class="eval-cell">
+                        <span class="eval-dot ${evalDotClass}"></span>
+                        <span class="${evalTextClass}">${evalLabel}</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    // Update subtitle
+    const subtitle = document.getElementById('compareSubtitle');
+    if (subtitle) {
+        subtitle.textContent = `Mỗi chỉ số: ngày mới nhất sheet riêng vs ngày kế trước · GTC: 08/08/2026 · Tab AI — Tổng quan N-1 để phân tích`;
+    }
+}
+
+function copyCompareTable() {
+    const rows = COMPARE_DATA.map(row => {
+        const diff = row.n1Value - row.n2Value;
+        const absDiff = Math.abs(diff);
+        const isUp = diff > 0;
+        const unitLabel = row.unit;
+
+        let diffDisplay;
+        if (unitLabel === '%') {
+            diffDisplay = absDiff.toFixed(1) + '%';
+        } else if (unitLabel === 'h') {
+            diffDisplay = absDiff.toFixed(2) + 'h';
+        } else {
+            diffDisplay = Math.round(absDiff) + ' ' + row.unit.trim();
+        }
+
+        let isGood;
+        if (row.higherIsBetter) {
+            isGood = isUp;
+        } else {
+            isGood = !isUp;
+        }
+
+        const direction = isUp ? 'tăng' : 'giảm';
+        const evalLabel = isGood ? '🟢 tốt' : '🔴 tệ';
+
+        const n1Display = unitLabel === '%' ? row.n1Value.toFixed(1) + '%'
+            : unitLabel === 'h' ? row.n1Value.toFixed(2) + 'h'
+            : Math.round(row.n1Value) + row.n1Unit;
+
+        const n2Display = unitLabel === '%' ? row.n2Value.toFixed(1) + '%'
+            : unitLabel === 'h' ? row.n2Value.toFixed(2) + 'h'
+            : Math.round(row.n2Value) + row.n2Unit;
+
+        return `${row.name} | ${row.n1Date} | ${n1Display} | ${row.n2Date} | ${n2Display} | ${direction} ${diffDisplay} so N-1 | ${evalLabel}`;
+    });
+
+    const header = 'CHỈ SỐ | N-1 | GIÁ TRỊ N-1 | N-2 | GIÁ TRỊ N-2 | BIẾN ĐỘNG | ĐÁNH GIÁ';
+    const separator = '---|---|---|---|---|---|---';
+    const text = [header, separator, ...rows].join('\n');
+
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('compareCopyBtn');
+        const btnText = document.getElementById('copyBtnText');
+        if (btn && btnText) {
+            btn.classList.add('copied');
+            btnText.textContent = 'copied!';
+            setTimeout(() => {
+                btn.classList.remove('copied');
+                btnText.textContent = 'copy';
+            }, 2000);
+        }
+    }).catch(err => {
+        console.error('Copy failed:', err);
+    });
 }
