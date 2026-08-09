@@ -17,10 +17,7 @@ NAV_GROUPS.forEach(g => {
 /* ===== INITIALIZATION ===== */
 document.addEventListener("DOMContentLoaded", () => {
     buildNav();
-    // Simulate initial load
-    setTimeout(() => {
-        loadMockData();
-    }, 500);
+    loadMockData(); // Bỏ setTimeout giả lập delay
 });
 
 /* ===== NAVIGATION LOGIC ===== */
@@ -94,14 +91,18 @@ let MOCK_DATA = {
 async function fetchGoogleSheetData() {
     const csvUrl = 'https://docs.google.com/spreadsheets/d/1x1CtDHpcRxYJNcVUaujE-d5_IF2alvv5vSaQQdAXdZg/export?format=csv&gid=0';
     try {
-        const response = await fetch(csvUrl);
-        const csvText = await response.text();
-        
-        Papa.parse(csvText, {
+        Papa.parse(csvUrl, {
+            download: true,
             header: true,
             skipEmptyLines: true,
+            worker: true,
             complete: function(results) {
                 processData(results.data);
+            },
+            error: function(error) {
+                console.error("Lỗi PapaParse:", error);
+                const btn = document.getElementById('refreshBtn');
+                if(btn) btn.classList.remove('spinning');
             }
         });
     } catch (error) {
