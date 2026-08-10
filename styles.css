@@ -591,3 +591,21 @@ tr:hover td { background: #F1F6FF; }
     margin-left: 6px;
     animation: livePulse 2s ease-in-out infinite;
 }
+
+/* =========================================
+   SKELETON LOADING
+========================================= */
+.skeleton-line {
+    background: linear-gradient(90deg, #E6E9EF 25%, #F1F3F7 50%, #E6E9EF 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: 6px;
+    min-height: 14px;
+}
+.skeleton-card {
+    opacity: 0.7;
+}
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}

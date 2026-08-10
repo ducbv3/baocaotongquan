@@ -1,16 +1,16 @@
 /* ===== NAV DATA ===== */
 const NAV_GROUPS = [
     { id: 'g_ov', icon: '🗺️', label: 'Tổng quan', page: 'p0' },
-    { id: 'g_gtc', icon: '📦', label: 'GTC', items: [['p1','📊','% GTC'],['p2','🛡️','TITAN TTS']] },
-    { id: 'g_fd', icon: '🔄', label: 'FD', items: [['p3','📅','FD Daily'],['p4','🗓️','FD Weekly']] },
-    { id: 'g_ot', icon: '⏱️', label: 'Ontime', items: [['p5','🛰️','ODR TTS'],['p6','🚀','OPR TTS']] },
-    { id: 'g_hr', icon: '👥', label: 'Nhân sự', items: [['p10','📋','Định biên'],['p11','📈','Năng suất']] },
+    { id: 'g_gtc', icon: '📦', label: 'GTC', items: [['p1', '📊', '% GTC'], ['p2', '🛡️', 'TITAN TTS']] },
+    { id: 'g_fd', icon: '🔄', label: 'FD', items: [['p3', '📅', 'FD Daily'], ['p4', '🗓️', 'FD Weekly']] },
+    { id: 'g_ot', icon: '⏱️', label: 'Ontime', items: [['p5', '🛰️', 'ODR TTS'], ['p6', '🚀', 'OPR TTS']] },
+    { id: 'g_hr', icon: '👥', label: 'Nhân sự', items: [['p10', '📋', 'Định biên'], ['p11', '📈', 'Năng suất']] },
     { id: 'g_ai', icon: '✨', label: 'AI', page: 'p12', cap: 'AI Analysis', cls: 'ai' }
 ];
 
 const PAGE2GRP = {};
 NAV_GROUPS.forEach(g => {
-    if(g.page) PAGE2GRP[g.page] = g.id;
+    if (g.page) PAGE2GRP[g.page] = g.id;
     (g.items || []).forEach(it => PAGE2GRP[it[0]] = g.id);
 });
 
@@ -24,14 +24,14 @@ document.addEventListener("DOMContentLoaded", () => {
 /* ===== NAVIGATION LOGIC ===== */
 function buildNav() {
     const nb = document.getElementById('navbar');
-    if(!nb) return;
+    if (!nb) return;
     nb.innerHTML = NAV_GROUPS.map(g => {
         const hasDD = !!g.items;
         const onclick = hasDD ? `navOpen(event,'${g.id}')` : `nav('${g.page}','${g.id}')`;
         const caret = hasDD ? '<span class="nav-caret">▾</span>' : '';
         const cap = g.cap ? `<div class="nav-cap">${g.cap}</div>` : '';
         let dd = '';
-        if(hasDD) {
+        if (hasDD) {
             dd = `<div class="nav-dd">` + g.items.map(it => `<button class="dd-item" data-pg="${it[0]}" onclick="nav('${it[0]}','${g.id}')"><span class="dd-ico">${it[1]}</span>${it[2]}</button>`).join('') + `</div>`;
         }
         return `<div class="nav-pod${g.cls === 'ai' ? ' ai' : ''}" id="pod_${g.id}"><button class="nav-circle" onclick="${onclick}">${g.icon}${caret}</button><div class="nav-label">${g.label}</div>${cap}${dd}</div>`;
@@ -42,27 +42,27 @@ function buildNav() {
 
 function navOpen(e, grpId) {
     e.stopPropagation();
-    const pod = document.getElementById('pod_'+grpId);
-    if(!pod) return;
+    const pod = document.getElementById('pod_' + grpId);
+    if (!pod) return;
     const wasOpen = pod.classList.contains('open');
     document.querySelectorAll('.nav-pod.open').forEach(p => p.classList.remove('open'));
-    if(!wasOpen) pod.classList.add('open');
+    if (!wasOpen) pod.classList.add('open');
 }
 
 function nav(id, grpId) {
     document.querySelectorAll('.nav-pod.open').forEach(p => p.classList.remove('open'));
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const el = document.getElementById(id);
-    if(el) {
+    if (el) {
         el.classList.add('active');
     }
-    
+
     grpId = grpId || PAGE2GRP[id];
     document.querySelectorAll('.nav-pod').forEach(p => p.classList.remove('cur'));
     document.querySelectorAll('.nav-circle').forEach(c => c.classList.remove('active'));
-    
-    const pod = document.getElementById('pod_'+grpId);
-    if(pod) {
+
+    const pod = document.getElementById('pod_' + grpId);
+    if (pod) {
         pod.classList.add('cur');
         pod.querySelector('.nav-circle')?.classList.add('active');
     }
@@ -76,7 +76,7 @@ document.addEventListener('click', () => {
 /* ===== SPLASH SCREEN ===== */
 function dismissSplash() {
     const splash = document.getElementById('splash');
-    if(splash) splash.classList.add('fade-out');
+    if (splash) splash.classList.add('fade-out');
 }
 
 /* ===== MOCK DATA & RENDER ===== */
@@ -96,33 +96,33 @@ let MOCK_DATA = {
 
 async function fetchGoogleSheetData() {
     const csvUrl = 'https://docs.google.com/spreadsheets/d/1x1CtDHpcRxYJNcVUaujE-d5_IF2alvv5vSaQQdAXdZg/export?format=csv&gid=0';
-    
+
     const startTime = performance.now();
     updateLoadingStatus('Đang tải dữ liệu từ Google Sheets...');
-    
+
     try {
         Papa.parse(csvUrl, {
             download: true,
             header: true,
             skipEmptyLines: true,
             // NO worker: true — main thread parse is faster for ~200 rows
-            complete: function(results) {
+            complete: function (results) {
                 const elapsed = Math.round(performance.now() - startTime);
                 updateLoadingStatus(`Dữ liệu tải xong (${elapsed}ms), đang xử lý...`);
                 console.log(`[Perf] Download + parse: ${elapsed}ms`);
                 processData(results.data);
             },
-            error: function(error) {
+            error: function (error) {
                 console.error("Lỗi PapaParse:", error);
                 const btn = document.getElementById('refreshBtn');
-                if(btn) btn.classList.remove('spinning');
+                if (btn) btn.classList.remove('spinning');
                 updateLoadingStatus('❌ Lỗi tải dữ liệu. Thử lại?');
             }
         });
     } catch (error) {
         console.error("Lỗi khi tải dữ liệu:", error);
         const btn = document.getElementById('refreshBtn');
-        if(btn) btn.classList.remove('spinning');
+        if (btn) btn.classList.remove('spinning');
         updateLoadingStatus('❌ Lỗi: ' + error.message);
     }
 }
@@ -131,7 +131,7 @@ function showLoadingState() {
     // Show skeleton loading in KPI area
     const kpiWrap = document.getElementById('kpiOverview');
     if (kpiWrap) {
-        kpiWrap.innerHTML = [1,2,3,4].map(() => `
+        kpiWrap.innerHTML = [1, 2, 3, 4].map(() => `
             <div class="kpi-card skeleton-card">
                 <div class="skeleton-line" style="width:32px;height:32px;border-radius:9px;"></div>
                 <div class="skeleton-line" style="width:80px;height:10px;margin-top:8px;"></div>
@@ -142,7 +142,7 @@ function showLoadingState() {
     // Show skeleton in compare table
     const compareTbody = document.getElementById('compareTbody');
     if (compareTbody) {
-        compareTbody.innerHTML = [1,2,3].map(() => `
+        compareTbody.innerHTML = [1, 2, 3].map(() => `
             <tr><td colspan="7"><div class="skeleton-line" style="width:100%;height:16px;"></div></td></tr>
         `).join('');
     }
@@ -150,7 +150,7 @@ function showLoadingState() {
     const dataTbody = document.querySelector('#dataTableOverview tbody');
     if (dataTbody) {
         dataTbody.innerHTML = [1,2,3,4,5,6].map(() => `
-            <tr><td colspan="6"><div class="skeleton-line" style="width:100%;height:14px;"></div></td></tr>
+            <tr><td colspan="5"><div class="skeleton-line" style="width:100%;height:14px;"></div></td></tr>
         `).join('');
     }
 }
@@ -169,7 +169,7 @@ function processData(data) {
     let totalOrders = 0;
     let delivered = 0;
     let returned = 0;
-    
+
     let dailyVols = {};
     let regionMap = {};
 
@@ -186,7 +186,7 @@ function processData(data) {
         let vol = parseNum(row['Volume']);
         let gtcRate = parseNum(row['% GTC']);
         let returnRate = parseNum(row['% Chuyển trả']);
-        
+
         let deliv = vol * gtcRate;
         let ret = vol * returnRate;
 
@@ -196,7 +196,7 @@ function processData(data) {
             totalOrders += vol;
             delivered += deliv;
             returned += ret;
-            
+
             if (!dailyVols[time]) dailyVols[time] = 0;
             dailyVols[time] += vol;
 
@@ -211,20 +211,25 @@ function processData(data) {
             let region = row['Chi tiết'];
             if (!region) return;
 
+            let ganRate = parseNum(row['% Gán']);
+            let gan = vol * ganRate;
+
             // Aggregate for overview
             if (!regionMap[region]) {
-                regionMap[region] = { name: region, total: 0, delivered: 0, pending: 0 };
+                regionMap[region] = { name: region, total: 0, delivered: 0, gan: 0 };
             }
             regionMap[region].total += vol;
             regionMap[region].delivered += deliv;
+            regionMap[region].gan += gan;
 
             // Per-date region data
             if (!dailyRegions[time]) dailyRegions[time] = {};
             if (!dailyRegions[time][region]) {
-                dailyRegions[time][region] = { name: region, total: 0, delivered: 0, pending: 0 };
+                dailyRegions[time][region] = { name: region, total: 0, delivered: 0, gan: 0 };
             }
             dailyRegions[time][region].total += vol;
             dailyRegions[time][region].delivered += deliv;
+            dailyRegions[time][region].gan += gan;
         }
     });
 
@@ -246,11 +251,12 @@ function processData(data) {
 
     let regions = Object.values(regionMap).map(r => {
         r.rate = r.total ? (r.delivered / r.total * 100) : 0;
-        r.pending = r.total - r.delivered;
+        r.ganRate = r.total ? (r.gan / r.total * 100) : 0;
+        r.gtcCount = Math.round(r.delivered);
         r.total = Math.round(r.total);
         r.delivered = Math.round(r.delivered);
-        r.pending = Math.round(r.pending);
         r.rate = parseFloat(r.rate.toFixed(1));
+        r.ganRate = parseFloat(r.ganRate.toFixed(1));
         return r;
     });
 
@@ -267,11 +273,12 @@ function processData(data) {
         if (dailyRegions[dateKey]) {
             dailyRegionsProcessed[dateKey] = Object.values(dailyRegions[dateKey]).map(r => {
                 r.rate = r.total ? (r.delivered / r.total * 100) : 0;
-                r.pending = r.total - r.delivered;
+                r.ganRate = r.total ? (r.gan / r.total * 100) : 0;
+                r.gtcCount = Math.round(r.delivered);
                 r.total = Math.round(r.total);
                 r.delivered = Math.round(r.delivered);
-                r.pending = Math.round(r.pending);
                 r.rate = parseFloat(r.rate.toFixed(1));
+                r.ganRate = parseFloat(r.ganRate.toFixed(1));
                 return r;
             });
         }
@@ -296,23 +303,23 @@ function processData(data) {
     renderTable();
     renderCharts();
     renderCompareTable();
-    
+
     document.getElementById('lastUpdate').innerText = "Cập nhật: " + new Date().toLocaleTimeString('vi-VN');
     const btn = document.getElementById('refreshBtn');
-    if(btn) btn.classList.remove('spinning');
+    if (btn) btn.classList.remove('spinning');
 }
 
 function loadMockData() {
     const btn = document.getElementById('refreshBtn');
-    if(btn) btn.classList.add('spinning');
+    if (btn) btn.classList.add('spinning');
     showLoadingState();
     fetchGoogleSheetData();
 }
 
 function renderKPIs() {
     const kpiWrap = document.getElementById('kpiOverview');
-    if(!kpiWrap) return;
-    
+    if (!kpiWrap) return;
+
     const d = MOCK_DATA.overview;
     kpiWrap.innerHTML = `
         <div class="kpi-card">
@@ -345,7 +352,7 @@ function populateDateSelector() {
 
     // Keep "Tất cả" option, add 8 most recent dates
     const recentDates = MOCK_DATA.allDates.slice(-8).reverse(); // newest first
-    
+
     // Clear existing date options (keep first "all" option)
     while (selector.options.length > 1) {
         selector.remove(1);
@@ -375,7 +382,7 @@ function renderTableByDate(dateKey) {
     if (!tbody) return;
 
     let regionsToRender;
-    
+
     if (dateKey === 'all') {
         regionsToRender = MOCK_DATA.regions;
     } else {
@@ -383,21 +390,20 @@ function renderTableByDate(dateKey) {
     }
 
     if (regionsToRender.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-sub);">Không có dữ liệu cho ngày đã chọn</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--text-sub);">Không có dữ liệu cho ngày đã chọn</td></tr>`;
         return;
     }
 
     tbody.innerHTML = regionsToRender.map(r => {
-        let cls = r.rate >= 93 ? 'g' : (r.rate >= 90 ? 'm' : 'b');
-        let status = r.rate >= 93 ? 'Tốt' : (r.rate >= 90 ? 'Khá' : 'Cần Cải Thiện');
+        let gtcCls = r.rate >= 93 ? 'g' : (r.rate >= 72 ? 'm' : 'b');
+        let ganCls = r.ganRate >= 95 ? 'g' : (r.ganRate >= 85 ? 'm' : 'b');
         return `
             <tr>
                 <td style="font-weight:600">${r.name}</td>
                 <td>${fmt(r.total)}</td>
-                <td>${fmt(r.delivered)}</td>
-                <td>${fmt(r.pending)}</td>
-                <td><span class="pct ${cls}">${r.rate}%</span></td>
-                <td>${status}</td>
+                <td><span class="pct ${ganCls}">${r.ganRate}%</span></td>
+                <td><span class="pct ${gtcCls}">${r.rate}%</span></td>
+                <td>${fmt(r.gtcCount)}</td>
             </tr>
         `;
     }).join('');
@@ -411,19 +417,18 @@ function renderTable() {
     } else {
         // Fallback: render all aggregated
         const tbody = document.querySelector('#dataTableOverview tbody');
-        if(!tbody) return;
-        
+        if (!tbody) return;
+
         tbody.innerHTML = MOCK_DATA.regions.map(r => {
-            let cls = r.rate >= 93 ? 'g' : (r.rate >= 90 ? 'm' : 'b');
-            let status = r.rate >= 93 ? 'Tốt' : (r.rate >= 90 ? 'Khá' : 'Cần Cải Thiện');
+            let gtcCls = r.rate >= 93 ? 'g' : (r.rate >= 72 ? 'm' : 'b');
+            let ganCls = r.ganRate >= 95 ? 'g' : (r.ganRate >= 85 ? 'm' : 'b');
             return `
                 <tr>
                     <td style="font-weight:600">${r.name}</td>
                     <td>${fmt(r.total)}</td>
-                    <td>${fmt(r.delivered)}</td>
-                    <td>${fmt(r.pending)}</td>
-                    <td><span class="pct ${cls}">${r.rate}%</span></td>
-                    <td>${status}</td>
+                    <td><span class="pct ${ganCls}">${r.ganRate}%</span></td>
+                    <td><span class="pct ${gtcCls}">${r.rate}%</span></td>
+                    <td>${fmt(r.gtcCount)}</td>
                 </tr>
             `;
         }).join('');
@@ -436,9 +441,9 @@ let ratioChartInst = null;
 function renderCharts() {
     const ctxVol = document.getElementById('volChart');
     const ctxRatio = document.getElementById('ratioChart');
-    
-    if(ctxVol && window.Chart) {
-        if(volChartInst) volChartInst.destroy();
+
+    if (ctxVol && window.Chart) {
+        if (volChartInst) volChartInst.destroy();
         volChartInst = new Chart(ctxVol, {
             type: 'bar',
             data: {
@@ -462,8 +467,8 @@ function renderCharts() {
         });
     }
 
-    if(ctxRatio && window.Chart) {
-        if(ratioChartInst) ratioChartInst.destroy();
+    if (ctxRatio && window.Chart) {
+        if (ratioChartInst) ratioChartInst.destroy();
         ratioChartInst = new Chart(ctxRatio, {
             type: 'doughnut',
             data: {
@@ -550,13 +555,13 @@ function buildCompareData() {
     // Build GTC row dynamically from the 2 most recent dates in the sheet
     const allDates = MOCK_DATA.allDates;
     const grandTotal = MOCK_DATA.dailyGrandTotal;
-    
+
     let compareRows = [];
 
     if (allDates.length >= 2) {
         const n1DateKey = allDates[allDates.length - 1]; // newest
         const n2DateKey = allDates[allDates.length - 2]; // second newest
-        
+
         const n1GT = grandTotal[n1DateKey];
         const n2GT = grandTotal[n2DateKey];
 
@@ -623,11 +628,11 @@ function renderCompareTable() {
         // Format values for display
         const n1Display = unitLabel === '%' ? row.n1Value.toFixed(1) + '%'
             : unitLabel === 'h' ? row.n1Value.toFixed(2) + 'h'
-            : Math.round(row.n1Value) + row.n1Unit;
+                : Math.round(row.n1Value) + row.n1Unit;
 
         const n2Display = unitLabel === '%' ? row.n2Value.toFixed(1) + '%'
             : unitLabel === 'h' ? row.n2Value.toFixed(2) + 'h'
-            : Math.round(row.n2Value) + row.n2Unit;
+                : Math.round(row.n2Value) + row.n2Unit;
 
         // Add a highlight badge for dynamic (live) data
         const liveBadge = row.isDynamic ? ' <span class="live-badge">LIVE</span>' : '';
@@ -694,11 +699,11 @@ function copyCompareTable() {
 
         const n1Display = unitLabel === '%' ? row.n1Value.toFixed(1) + '%'
             : unitLabel === 'h' ? row.n1Value.toFixed(2) + 'h'
-            : Math.round(row.n1Value) + row.n1Unit;
+                : Math.round(row.n1Value) + row.n1Unit;
 
         const n2Display = unitLabel === '%' ? row.n2Value.toFixed(1) + '%'
             : unitLabel === 'h' ? row.n2Value.toFixed(2) + 'h'
-            : Math.round(row.n2Value) + row.n2Unit;
+                : Math.round(row.n2Value) + row.n2Unit;
 
         return `${row.name} | ${row.n1Date} | ${n1Display} | ${row.n2Date} | ${n2Display} | ${direction} ${diffDisplay} so N-1 | ${evalLabel}`;
     });
