@@ -17,6 +17,7 @@ NAV_GROUPS.forEach(g => {
 /* ===== INITIALIZATION ===== */
 document.addEventListener("DOMContentLoaded", () => {
     buildNav();
+    showLoadingState();
     loadMockData();
 });
 
@@ -95,26 +96,68 @@ let MOCK_DATA = {
 
 async function fetchGoogleSheetData() {
     const csvUrl = 'https://docs.google.com/spreadsheets/d/1x1CtDHpcRxYJNcVUaujE-d5_IF2alvv5vSaQQdAXdZg/export?format=csv&gid=0';
+    
+    const startTime = performance.now();
+    updateLoadingStatus('Đang tải dữ liệu từ Google Sheets...');
+    
     try {
         Papa.parse(csvUrl, {
             download: true,
             header: true,
             skipEmptyLines: true,
-            worker: true,
+            // NO worker: true — main thread parse is faster for ~200 rows
             complete: function(results) {
+                const elapsed = Math.round(performance.now() - startTime);
+                updateLoadingStatus(`Dữ liệu tải xong (${elapsed}ms), đang xử lý...`);
+                console.log(`[Perf] Download + parse: ${elapsed}ms`);
                 processData(results.data);
             },
             error: function(error) {
                 console.error("Lỗi PapaParse:", error);
                 const btn = document.getElementById('refreshBtn');
                 if(btn) btn.classList.remove('spinning');
+                updateLoadingStatus('❌ Lỗi tải dữ liệu. Thử lại?');
             }
         });
     } catch (error) {
-        console.error("Lỗi khi tải dữ liệu từ Google Sheets:", error);
+        console.error("Lỗi khi tải dữ liệu:", error);
         const btn = document.getElementById('refreshBtn');
         if(btn) btn.classList.remove('spinning');
+        updateLoadingStatus('❌ Lỗi: ' + error.message);
     }
+}
+
+function showLoadingState() {
+    // Show skeleton loading in KPI area
+    const kpiWrap = document.getElementById('kpiOverview');
+    if (kpiWrap) {
+        kpiWrap.innerHTML = [1,2,3,4].map(() => `
+            <div class="kpi-card skeleton-card">
+                <div class="skeleton-line" style="width:32px;height:32px;border-radius:9px;"></div>
+                <div class="skeleton-line" style="width:80px;height:10px;margin-top:8px;"></div>
+                <div class="skeleton-line" style="width:100px;height:24px;margin-top:6px;"></div>
+            </div>
+        `).join('');
+    }
+    // Show skeleton in compare table
+    const compareTbody = document.getElementById('compareTbody');
+    if (compareTbody) {
+        compareTbody.innerHTML = [1,2,3].map(() => `
+            <tr><td colspan="7"><div class="skeleton-line" style="width:100%;height:16px;"></div></td></tr>
+        `).join('');
+    }
+    // Show skeleton in data table
+    const dataTbody = document.querySelector('#dataTableOverview tbody');
+    if (dataTbody) {
+        dataTbody.innerHTML = [1,2,3,4,5,6].map(() => `
+            <tr><td colspan="6"><div class="skeleton-line" style="width:100%;height:14px;"></div></td></tr>
+        `).join('');
+    }
+}
+
+function updateLoadingStatus(msg) {
+    const el = document.getElementById('lastUpdate');
+    if (el) el.innerText = msg;
 }
 
 function processData(data) {
@@ -262,7 +305,7 @@ function processData(data) {
 function loadMockData() {
     const btn = document.getElementById('refreshBtn');
     if(btn) btn.classList.add('spinning');
-    
+    showLoadingState();
     fetchGoogleSheetData();
 }
 
