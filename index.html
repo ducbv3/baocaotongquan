@@ -151,6 +151,15 @@
                     <div class="card-title">
                         <div class="card-icon">📋</div> Dữ liệu chi tiết Tỉnh/Thành phố
                     </div>
+                    <div class="card-header-actions">
+                        <div class="date-selector-wrap">
+                            <label class="date-selector-label" for="dateSelector">📅 Chọn ngày:</label>
+                            <select id="dateSelector" class="date-selector" onchange="renderTableByDate(this.value)">
+                                <option value="all">Tất cả (tổng hợp)</option>
+                                <!-- JS will populate date options -->
+                            </select>
+                        </div>
+                    </div>
                 </div>
                 <div class="table-wrap">
                     <table id="dataTableOverview">

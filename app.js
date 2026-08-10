@@ -17,8 +17,7 @@ NAV_GROUPS.forEach(g => {
 /* ===== INITIALIZATION ===== */
 document.addEventListener("DOMContentLoaded", () => {
     buildNav();
-    renderCompareTable();
-    loadMockData(); // Bỏ setTimeout giả lập delay
+    loadMockData();
 });
 
 /* ===== NAVIGATION LOGIC ===== */
@@ -86,7 +85,12 @@ let MOCK_DATA = {
     overview: { totalOrders: 0, delivered: 0, pending: 0, successRate: 0, returnRate: 0 },
     chartVol: [],
     chartLabels: [],
-    regions: []
+    regions: [],
+    // Per-date data for date selector & GTC compare
+    allDates: [],           // sorted unique date strings (from Time column)
+    dailyRegions: {},       // { dateKey: [ {name, total, delivered, pending, rate} ] }
+    dailyGrandTotal: {},    // { dateKey: { volume, gtcRate, returnRate, ... } }
+    rawData: []             // keep raw rows for re-processing
 };
 
 async function fetchGoogleSheetData() {
@@ -126,6 +130,13 @@ function processData(data) {
     let dailyVols = {};
     let regionMap = {};
 
+    // Per-date structures
+    let dailyRegions = {};   // { dateKey: { regionName: {name, total, delivered, pending} } }
+    let dailyGrandTotal = {}; // { dateKey: { volume, gtcRate, returnRate, leadtime } }
+    let allDateSet = new Set();
+
+    MOCK_DATA.rawData = data;
+
     data.forEach(row => {
         let isGrandTotal = (row['Chi tiết'] === 'Grand Total' || !row['Cấp Quản Lý'] || !row['Cấp Quản Lý'].trim());
         let time = row['Time'];
@@ -136,6 +147,8 @@ function processData(data) {
         let deliv = vol * gtcRate;
         let ret = vol * returnRate;
 
+        if (time) allDateSet.add(time);
+
         if (isGrandTotal && time) {
             totalOrders += vol;
             delivered += deliv;
@@ -143,14 +156,32 @@ function processData(data) {
             
             if (!dailyVols[time]) dailyVols[time] = 0;
             dailyVols[time] += vol;
-        } else if (!isGrandTotal) {
+
+            // Store grand total per date
+            dailyGrandTotal[time] = {
+                volume: vol,
+                gtcRate: gtcRate,
+                returnRate: returnRate,
+                leadtime: parseNum(row['Leadtime'])
+            };
+        } else if (!isGrandTotal && time) {
             let region = row['Chi tiết'];
             if (!region) return;
+
+            // Aggregate for overview
             if (!regionMap[region]) {
                 regionMap[region] = { name: region, total: 0, delivered: 0, pending: 0 };
             }
             regionMap[region].total += vol;
             regionMap[region].delivered += deliv;
+
+            // Per-date region data
+            if (!dailyRegions[time]) dailyRegions[time] = {};
+            if (!dailyRegions[time][region]) {
+                dailyRegions[time][region] = { name: region, total: 0, delivered: 0, pending: 0 };
+            }
+            dailyRegions[time][region].total += vol;
+            dailyRegions[time][region].delivered += deliv;
         }
     });
 
@@ -158,23 +189,50 @@ function processData(data) {
     let retRate = totalOrders ? (returned / totalOrders * 100) : 0;
     let pending = totalOrders - delivered - returned;
 
-    let timeKeys = Object.keys(dailyVols).sort();
-    timeKeys = timeKeys.slice(-7); // Lấy 7 ngày gần nhất
-    let chartLabels = timeKeys.map(t => {
+    let timeKeys = Object.keys(dailyVols).sort((a, b) => {
+        let da = a.split(' - ')[0];
+        let db = b.split(' - ')[0];
+        return da.localeCompare(db);
+    });
+    let chartTimeKeys = timeKeys.slice(-7); // 7 ngày gần nhất cho chart
+    let chartLabels = chartTimeKeys.map(t => {
         let parts = t.split(' - ');
         return parts.length > 1 ? parts[1] : t;
     });
-    let chartVol = timeKeys.map(t => Math.round(dailyVols[t]));
+    let chartVol = chartTimeKeys.map(t => Math.round(dailyVols[t]));
 
     let regions = Object.values(regionMap).map(r => {
         r.rate = r.total ? (r.delivered / r.total * 100) : 0;
-        r.pending = r.total - r.delivered; // approximate pending
+        r.pending = r.total - r.delivered;
         r.total = Math.round(r.total);
         r.delivered = Math.round(r.delivered);
         r.pending = Math.round(r.pending);
         r.rate = parseFloat(r.rate.toFixed(1));
         return r;
     });
+
+    // Sort all dates
+    let allDates = Array.from(allDateSet).sort((a, b) => {
+        let da = a.split(' - ')[0];
+        let db = b.split(' - ')[0];
+        return da.localeCompare(db);
+    });
+
+    // Process dailyRegions into arrays with rate
+    let dailyRegionsProcessed = {};
+    for (let dateKey of allDates) {
+        if (dailyRegions[dateKey]) {
+            dailyRegionsProcessed[dateKey] = Object.values(dailyRegions[dateKey]).map(r => {
+                r.rate = r.total ? (r.delivered / r.total * 100) : 0;
+                r.pending = r.total - r.delivered;
+                r.total = Math.round(r.total);
+                r.delivered = Math.round(r.delivered);
+                r.pending = Math.round(r.pending);
+                r.rate = parseFloat(r.rate.toFixed(1));
+                return r;
+            });
+        }
+    }
 
     MOCK_DATA.overview = {
         totalOrders: Math.round(totalOrders),
@@ -186,8 +244,12 @@ function processData(data) {
     MOCK_DATA.chartLabels = chartLabels;
     MOCK_DATA.chartVol = chartVol;
     MOCK_DATA.regions = regions;
+    MOCK_DATA.allDates = allDates;
+    MOCK_DATA.dailyRegions = dailyRegionsProcessed;
+    MOCK_DATA.dailyGrandTotal = dailyGrandTotal;
 
     renderKPIs();
+    populateDateSelector();
     renderTable();
     renderCharts();
     renderCompareTable();
@@ -233,11 +295,56 @@ function renderKPIs() {
     `;
 }
 
-function renderTable() {
-    const tbody = document.querySelector('#dataTableOverview tbody');
-    if(!tbody) return;
+/* ===== DATE SELECTOR & PER-DATE TABLE ===== */
+function populateDateSelector() {
+    const selector = document.getElementById('dateSelector');
+    if (!selector) return;
+
+    // Keep "Tất cả" option, add 8 most recent dates
+    const recentDates = MOCK_DATA.allDates.slice(-8).reverse(); // newest first
     
-    tbody.innerHTML = MOCK_DATA.regions.map(r => {
+    // Clear existing date options (keep first "all" option)
+    while (selector.options.length > 1) {
+        selector.remove(1);
+    }
+
+    recentDates.forEach(dateKey => {
+        const opt = document.createElement('option');
+        opt.value = dateKey;
+        // Format: "2026-08-09 - Chủ Nhật" → "09/08/2026 (Chủ Nhật)"
+        const parts = dateKey.split(' - ');
+        const dateParts = parts[0].split('-'); // [2026, 08, 09]
+        const formatted = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+        const dayName = parts.length > 1 ? ` (${parts[1].trim()})` : '';
+        opt.textContent = `${formatted}${dayName}`;
+        selector.appendChild(opt);
+    });
+
+    // Auto-select the most recent date
+    if (recentDates.length > 0) {
+        selector.value = recentDates[0];
+        renderTableByDate(recentDates[0]);
+    }
+}
+
+function renderTableByDate(dateKey) {
+    const tbody = document.querySelector('#dataTableOverview tbody');
+    if (!tbody) return;
+
+    let regionsToRender;
+    
+    if (dateKey === 'all') {
+        regionsToRender = MOCK_DATA.regions;
+    } else {
+        regionsToRender = MOCK_DATA.dailyRegions[dateKey] || [];
+    }
+
+    if (regionsToRender.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-sub);">Không có dữ liệu cho ngày đã chọn</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = regionsToRender.map(r => {
         let cls = r.rate >= 93 ? 'g' : (r.rate >= 90 ? 'm' : 'b');
         let status = r.rate >= 93 ? 'Tốt' : (r.rate >= 90 ? 'Khá' : 'Cần Cải Thiện');
         return `
@@ -251,6 +358,33 @@ function renderTable() {
             </tr>
         `;
     }).join('');
+}
+
+function renderTable() {
+    // Default: render by the currently selected date
+    const selector = document.getElementById('dateSelector');
+    if (selector) {
+        renderTableByDate(selector.value);
+    } else {
+        // Fallback: render all aggregated
+        const tbody = document.querySelector('#dataTableOverview tbody');
+        if(!tbody) return;
+        
+        tbody.innerHTML = MOCK_DATA.regions.map(r => {
+            let cls = r.rate >= 93 ? 'g' : (r.rate >= 90 ? 'm' : 'b');
+            let status = r.rate >= 93 ? 'Tốt' : (r.rate >= 90 ? 'Khá' : 'Cần Cải Thiện');
+            return `
+                <tr>
+                    <td style="font-weight:600">${r.name}</td>
+                    <td>${fmt(r.total)}</td>
+                    <td>${fmt(r.delivered)}</td>
+                    <td>${fmt(r.pending)}</td>
+                    <td><span class="pct ${cls}">${r.rate}%</span></td>
+                    <td>${status}</td>
+                </tr>
+            `;
+        }).join('');
+    }
 }
 
 let volChartInst = null;
@@ -293,7 +427,7 @@ function renderCharts() {
                 labels: MOCK_DATA.regions.map(r => r.name),
                 datasets: [{
                     data: MOCK_DATA.regions.map(r => r.total),
-                    backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'],
+                    backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'],
                     borderWidth: 0
                 }]
             },
@@ -310,13 +444,9 @@ function renderCharts() {
 }
 
 /* ===== COMPARE TABLE (N-1 vs N-2) ===== */
-const COMPARE_DATA = [
-    {
-        name: 'GTC',
-        n1Date: '08/08/2026', n1Value: 71.2, n1Unit: '%',
-        n2Date: '07/08/2026', n2Value: 70.3, n2Unit: '%',
-        higherIsBetter: true, unit: '%'
-    },
+
+// Static data for non-GTC metrics (these come from different sheets)
+const COMPARE_DATA_STATIC = [
     {
         name: 'FD Total',
         n1Date: '08/08/2026', n1Value: 5.93, n1Unit: '%',
@@ -373,9 +503,49 @@ const COMPARE_DATA = [
     }
 ];
 
+function buildCompareData() {
+    // Build GTC row dynamically from the 2 most recent dates in the sheet
+    const allDates = MOCK_DATA.allDates;
+    const grandTotal = MOCK_DATA.dailyGrandTotal;
+    
+    let compareRows = [];
+
+    if (allDates.length >= 2) {
+        const n1DateKey = allDates[allDates.length - 1]; // newest
+        const n2DateKey = allDates[allDates.length - 2]; // second newest
+        
+        const n1GT = grandTotal[n1DateKey];
+        const n2GT = grandTotal[n2DateKey];
+
+        if (n1GT && n2GT) {
+            // Format date: "2026-08-09 - Chủ Nhật" → "09/08/2026"
+            const formatDate = (dateKey) => {
+                const parts = dateKey.split(' - ')[0].split('-');
+                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            };
+
+            const n1GtcPct = parseFloat((n1GT.gtcRate * 100).toFixed(1));
+            const n2GtcPct = parseFloat((n2GT.gtcRate * 100).toFixed(1));
+
+            compareRows.push({
+                name: 'GTC',
+                n1Date: formatDate(n1DateKey), n1Value: n1GtcPct, n1Unit: '%',
+                n2Date: formatDate(n2DateKey), n2Value: n2GtcPct, n2Unit: '%',
+                higherIsBetter: true, unit: '%',
+                isDynamic: true
+            });
+        }
+    }
+
+    // Add static rows after GTC
+    return [...compareRows, ...COMPARE_DATA_STATIC];
+}
+
 function renderCompareTable() {
     const tbody = document.getElementById('compareTbody');
     if (!tbody) return;
+
+    const COMPARE_DATA = buildCompareData();
 
     tbody.innerHTML = COMPARE_DATA.map(row => {
         const diff = row.n1Value - row.n2Value;
@@ -396,9 +566,9 @@ function renderCompareTable() {
         // Determine if the change is "good" or "bad"
         let isGood;
         if (row.higherIsBetter) {
-            isGood = isUp; // higher is better, so going up = good
+            isGood = isUp;
         } else {
-            isGood = !isUp; // lower is better, so going down = good
+            isGood = !isUp;
         }
 
         const direction = isUp ? 'tăng' : 'giảm';
@@ -416,9 +586,12 @@ function renderCompareTable() {
             : unitLabel === 'h' ? row.n2Value.toFixed(2) + 'h'
             : Math.round(row.n2Value) + row.n2Unit;
 
+        // Add a highlight badge for dynamic (live) data
+        const liveBadge = row.isDynamic ? ' <span class="live-badge">LIVE</span>' : '';
+
         return `
-            <tr>
-                <td class="metric-name">${row.name}</td>
+            <tr${row.isDynamic ? ' class="dynamic-row"' : ''}>
+                <td class="metric-name">${row.name}${liveBadge}</td>
                 <td class="date-cell">${row.n1Date}</td>
                 <td class="value-cell">${n1Display}</td>
                 <td class="date-cell">${row.n2Date}</td>
@@ -434,14 +607,23 @@ function renderCompareTable() {
         `;
     }).join('');
 
-    // Update subtitle
+    // Update subtitle with dynamic date info
     const subtitle = document.getElementById('compareSubtitle');
     if (subtitle) {
-        subtitle.textContent = `Mỗi chỉ số: ngày mới nhất sheet riêng vs ngày kế trước · GTC: 08/08/2026 · Tab AI — Tổng quan N-1 để phân tích`;
+        const allDates = MOCK_DATA.allDates;
+        if (allDates.length >= 2) {
+            const n1Key = allDates[allDates.length - 1];
+            const n2Key = allDates[allDates.length - 2];
+            const fmtD = (k) => { const p = k.split(' - ')[0].split('-'); return `${p[2]}/${p[1]}/${p[0]}`; };
+            subtitle.textContent = `GTC tự động cập nhật từ sheet · N-1: ${fmtD(n1Key)} · N-2: ${fmtD(n2Key)} · Các chỉ số khác: ngày mới nhất sheet riêng`;
+        } else {
+            subtitle.textContent = `Mỗi chỉ số: ngày mới nhất sheet riêng vs ngày kế trước`;
+        }
     }
 }
 
 function copyCompareTable() {
+    const COMPARE_DATA = buildCompareData();
     const rows = COMPARE_DATA.map(row => {
         const diff = row.n1Value - row.n2Value;
         const absDiff = Math.abs(diff);

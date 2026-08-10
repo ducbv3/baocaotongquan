@@ -299,6 +299,65 @@ tr:hover td { background: #F1F6FF; }
 .b { background: var(--red-bg); color: var(--red); }
 
 /* =========================================
+   DATE SELECTOR & CARD HEADER ACTIONS
+========================================= */
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.card-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+}
+.date-selector-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.date-selector-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-sub);
+    white-space: nowrap;
+}
+.date-selector {
+    padding: 7px 32px 7px 12px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: #fff;
+    color: var(--text-main);
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: var(--mono);
+    cursor: pointer;
+    transition: all .15s;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    min-width: 180px;
+}
+.date-selector:hover {
+    border-color: var(--orange);
+    box-shadow: 0 2px 8px rgba(37,99,235,0.12);
+}
+.date-selector:focus {
+    outline: none;
+    border-color: var(--orange);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+.date-selector option {
+    font-weight: 600;
+    padding: 8px;
+}
+
+/* =========================================
    COMPARE TABLE (N-1 vs N-2)
 ========================================= */
 .compare-section {
@@ -510,4 +569,25 @@ tr:hover td { background: #F1F6FF; }
 .compare-footer-link:hover {
     color: var(--orange);
     text-decoration: underline;
+}
+
+/* Dynamic row (LIVE data) */
+.compare-table .dynamic-row td {
+    background: linear-gradient(90deg, rgba(37,99,235,0.04) 0%, rgba(37,99,235,0.02) 100%);
+}
+.compare-table .dynamic-row:hover td {
+    background: linear-gradient(90deg, rgba(37,99,235,0.08) 0%, rgba(37,99,235,0.04) 100%);
+}
+.live-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #059669, #10B981);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    vertical-align: middle;
+    margin-left: 6px;
+    animation: livePulse 2s ease-in-out infinite;
 }
