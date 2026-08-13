@@ -486,56 +486,7 @@ let volChartInst = null;
 let ratioChartInst = null;
 
 function renderCharts() {
-    const ctxVol = document.getElementById('volChart');
-    const ctxRatio = document.getElementById('ratioChart');
-
-    if (ctxVol && window.Chart) {
-        if (volChartInst) volChartInst.destroy();
-        volChartInst = new Chart(ctxVol, {
-            type: 'bar',
-            data: {
-                labels: MOCK_DATA.chartLabels,
-                datasets: [{
-                    label: 'Sản lượng (đơn)',
-                    data: MOCK_DATA.chartVol,
-                    backgroundColor: '#3B82F6',
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, grid: { color: '#E6E9EF' } },
-                    x: { grid: { display: false } }
-                }
-            }
-        });
-    }
-
-    if (ctxRatio && window.Chart) {
-        if (ratioChartInst) ratioChartInst.destroy();
-        ratioChartInst = new Chart(ctxRatio, {
-            type: 'doughnut',
-            data: {
-                labels: MOCK_DATA.regions.map(r => r.name),
-                datasets: [{
-                    data: MOCK_DATA.regions.map(r => r.total),
-                    backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '70%',
-                plugins: {
-                    legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8 } }
-                }
-            }
-        });
-    }
+    // Biểu đồ đã bị loại bỏ theo yêu cầu của user
 }
 
 /* ===== AGING DATA (from Aging sheet) ===== */
