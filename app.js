@@ -1,76 +1,7 @@
-/* ===== NAV DATA ===== */
-const NAV_GROUPS = [
-    { id: 'g_ov', icon: '🗺️', label: 'Tổng quan', page: 'p0' },
-    { id: 'g_gtc', icon: '📦', label: 'GTC', items: [['p1', '📊', '% GTC'], ['p2', '🛡️', 'TITAN TTS']] },
-    { id: 'g_fd', icon: '🔄', label: 'FD', items: [['p3', '📅', 'FD Daily'], ['p4', '🗓️', 'FD Weekly']] },
-    { id: 'g_ot', icon: '⏱️', label: 'Ontime', items: [['p5', '🛰️', 'ODR TTS'], ['p6', '🚀', 'OPR TTS']] },
-    { id: 'g_hr', icon: '👥', label: 'Nhân sự', items: [['p10', '📋', 'Định biên'], ['p11', '📈', 'Năng suất']] },
-    { id: 'g_ai', icon: '✨', label: 'AI', page: 'p12', cap: 'AI Analysis', cls: 'ai' }
-];
-
-const PAGE2GRP = {};
-NAV_GROUPS.forEach(g => {
-    if (g.page) PAGE2GRP[g.page] = g.id;
-    (g.items || []).forEach(it => PAGE2GRP[it[0]] = g.id);
-});
-
 /* ===== INITIALIZATION ===== */
 document.addEventListener("DOMContentLoaded", () => {
-    buildNav();
     showLoadingState();
     loadMockData();
-});
-
-/* ===== NAVIGATION LOGIC ===== */
-function buildNav() {
-    const nb = document.getElementById('navbar');
-    if (!nb) return;
-    nb.innerHTML = NAV_GROUPS.map(g => {
-        const hasDD = !!g.items;
-        const onclick = hasDD ? `navOpen(event,'${g.id}')` : `nav('${g.page}','${g.id}')`;
-        const caret = hasDD ? '<span class="nav-caret">▾</span>' : '';
-        const cap = g.cap ? `<div class="nav-cap">${g.cap}</div>` : '';
-        let dd = '';
-        if (hasDD) {
-            dd = `<div class="nav-dd">` + g.items.map(it => `<button class="dd-item" data-pg="${it[0]}" onclick="nav('${it[0]}','${g.id}')"><span class="dd-ico">${it[1]}</span>${it[2]}</button>`).join('') + `</div>`;
-        }
-        return `<div class="nav-pod${g.cls === 'ai' ? ' ai' : ''}" id="pod_${g.id}"><button class="nav-circle" onclick="${onclick}">${g.icon}${caret}</button><div class="nav-label">${g.label}</div>${cap}${dd}</div>`;
-    }).join('');
-    // Đặt tab đầu tiên là active
-    nav('p0', 'g_ov');
-}
-
-function navOpen(e, grpId) {
-    e.stopPropagation();
-    const pod = document.getElementById('pod_' + grpId);
-    if (!pod) return;
-    const wasOpen = pod.classList.contains('open');
-    document.querySelectorAll('.nav-pod.open').forEach(p => p.classList.remove('open'));
-    if (!wasOpen) pod.classList.add('open');
-}
-
-function nav(id, grpId) {
-    document.querySelectorAll('.nav-pod.open').forEach(p => p.classList.remove('open'));
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const el = document.getElementById(id);
-    if (el) {
-        el.classList.add('active');
-    }
-
-    grpId = grpId || PAGE2GRP[id];
-    document.querySelectorAll('.nav-pod').forEach(p => p.classList.remove('cur'));
-    document.querySelectorAll('.nav-circle').forEach(c => c.classList.remove('active'));
-
-    const pod = document.getElementById('pod_' + grpId);
-    if (pod) {
-        pod.classList.add('cur');
-        pod.querySelector('.nav-circle')?.classList.add('active');
-    }
-    document.querySelectorAll('.dd-item').forEach(d => d.classList.toggle('active', d.dataset.pg === id));
-}
-
-document.addEventListener('click', () => {
-    document.querySelectorAll('.nav-pod.open').forEach(p => p.classList.remove('open'));
 });
 
 /* ===== SPLASH SCREEN ===== */
