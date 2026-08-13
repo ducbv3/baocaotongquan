@@ -95,7 +95,7 @@ let MOCK_DATA = {
 };
 
 async function fetchGoogleSheetData() {
-    const csvUrl = 'https://docs.google.com/spreadsheets/d/1S296AhJ6MlXN1-JYFNzQG6Uu-35UN132ovHC4o8jGq4/edit?gid=0#gid=0';
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/1S296AhJ6MlXN1-JYFNzQG6Uu-35UN132ovHC4o8jGq4/export?format=csv&gid=0';
 
     const startTime = performance.now();
     updateLoadingStatus('Đang tải dữ liệu từ Google Sheets...');
