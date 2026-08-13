@@ -240,17 +240,27 @@ function processData(mainData, ca1Data, ca2Data) {
     const parseRegionsFromData = (sheetData) => {
         let rMap = {};
         let dRegions = {};
+        let dGrandTotal = {};
         
         sheetData.forEach(row => {
             let isGrandTotal = (row['Chi tiết'] === 'Grand Total' || !row['Cấp Quản Lý'] || !row['Cấp Quản Lý'].trim());
             let time = row['Time'];
-            if (!time || isGrandTotal) return;
+            if (!time) return;
             
             let vol = parseNum(row['Volume']);
             let gtcRate = parseNum(row['% GTC']);
             let deliv = vol * gtcRate;
             let ganRate = parseNum(row['% Gán']);
             let gan = vol * ganRate;
+            
+            if (isGrandTotal) {
+                dGrandTotal[time] = {
+                    volume: vol,
+                    gtcRate: gtcRate
+                };
+                return;
+            }
+
             let region = row['Chi tiết'];
             if (!region) return;
 
@@ -294,7 +304,7 @@ function processData(mainData, ca1Data, ca2Data) {
                 });
             }
         }
-        return { regions: allRegs, dailyRegions: dRegsProcessed };
+        return { regions: allRegs, dailyRegions: dRegsProcessed, dailyGrandTotal: dGrandTotal };
     };
 
     const ca1Parsed = parseRegionsFromData(ca1Data);
@@ -302,8 +312,11 @@ function processData(mainData, ca1Data, ca2Data) {
 
     MOCK_DATA.regionsCa1 = ca1Parsed.regions;
     MOCK_DATA.dailyRegionsCa1 = ca1Parsed.dailyRegions;
+    MOCK_DATA.dailyGrandTotalCa1 = ca1Parsed.dailyGrandTotal;
+    
     MOCK_DATA.regionsCa2 = ca2Parsed.regions;
     MOCK_DATA.dailyRegionsCa2 = ca2Parsed.dailyRegions;
+    MOCK_DATA.dailyGrandTotalCa2 = ca2Parsed.dailyGrandTotal;
 
     // Debug: verify dates and GTC compare data
     console.log('[Data] Tổng số dòng:', mainData.length);
@@ -647,27 +660,35 @@ function buildCompareData() {
         const n1DateKey = allDates[allDates.length - 1]; // newest
         const n2DateKey = allDates[allDates.length - 2]; // second newest
 
-        const n1GT = grandTotal[n1DateKey];
-        const n2GT = grandTotal[n2DateKey];
+        // Format date: "2026-08-09 - Chủ Nhật" → "09/08/2026"
+        const formatDate = (dateKey) => {
+            const parts = dateKey.split(' - ')[0].split('-');
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        };
 
-        if (n1GT && n2GT) {
-            // Format date: "2026-08-09 - Chủ Nhật" → "09/08/2026"
-            const formatDate = (dateKey) => {
-                const parts = dateKey.split(' - ')[0].split('-');
-                return `${parts[2]}/${parts[1]}/${parts[0]}`;
-            };
+        const n1DateFmt = formatDate(n1DateKey);
+        const n2DateFmt = formatDate(n2DateKey);
 
-            const n1GtcPct = parseFloat((n1GT.gtcRate * 100).toFixed(1));
-            const n2GtcPct = parseFloat((n2GT.gtcRate * 100).toFixed(1));
+        // Function to create a comparison row
+        const addRow = (title, grandTotalData) => {
+            const n1GT = grandTotalData[n1DateKey];
+            const n2GT = grandTotalData[n2DateKey];
+            if (n1GT && n2GT) {
+                const n1GtcPct = parseFloat((n1GT.gtcRate * 100).toFixed(1));
+                const n2GtcPct = parseFloat((n2GT.gtcRate * 100).toFixed(1));
+                compareRows.push({
+                    name: title,
+                    n1Date: n1DateFmt, n1Value: n1GtcPct, n1Unit: '%',
+                    n2Date: n2DateFmt, n2Value: n2GtcPct, n2Unit: '%',
+                    higherIsBetter: true, unit: '%',
+                    isDynamic: true
+                });
+            }
+        };
 
-            compareRows.push({
-                name: 'GTC',
-                n1Date: formatDate(n1DateKey), n1Value: n1GtcPct, n1Unit: '%',
-                n2Date: formatDate(n2DateKey), n2Value: n2GtcPct, n2Unit: '%',
-                higherIsBetter: true, unit: '%',
-                isDynamic: true
-            });
-        }
+        addRow('GTC', MOCK_DATA.dailyGrandTotal);
+        addRow('GTC ca 1, tồn', MOCK_DATA.dailyGrandTotalCa1);
+        addRow('GTC ca 2', MOCK_DATA.dailyGrandTotalCa2);
     }
 
     // Build Aging >5N row dynamically
