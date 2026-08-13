@@ -1,5 +1,5 @@
 /* ===== NAV DATA ===== */
-const NAV_GROUPS = [
+//const NAV_GROUPS = [
     { id: 'g_ov', icon: '🗺️', label: 'Tổng quan', page: 'p0' },
     { id: 'g_gtc', icon: '📦', label: 'GTC', items: [['p1', '📊', '% GTC'], ['p2', '🛡️', 'TITAN TTS']] },
     { id: 'g_fd', icon: '🔄', label: 'FD', items: [['p3', '📅', 'FD Daily'], ['p4', '🗓️', 'FD Weekly']] },
