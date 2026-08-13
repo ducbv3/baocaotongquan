@@ -98,7 +98,7 @@ function updateLoadingStatus(msg) {
     if (el) el.innerText = msg;
 }
 
-function processData(data) {
+function processData(mainData, ca1Data, ca2Data) {
     const parseNum = (str) => {
         if (!str) return 0;
         return parseFloat(String(str).replace(/\./g, '').replace(',', '.'));
@@ -306,7 +306,7 @@ function processData(data) {
     MOCK_DATA.dailyRegionsCa2 = ca2Parsed.dailyRegions;
 
     // Debug: verify dates and GTC compare data
-    console.log('[Data] Tổng số dòng:', data.length);
+    console.log('[Data] Tổng số dòng:', mainData.length);
     console.log('[Data] Tất cả ngày (sorted):', allDates);
     console.log('[Data] Grand Total dates:', Object.keys(dailyGrandTotal).length);
     if (allDates.length >= 2) {
