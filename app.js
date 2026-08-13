@@ -298,15 +298,30 @@ function processData(data) {
     MOCK_DATA.dailyRegions = dailyRegionsProcessed;
     MOCK_DATA.dailyGrandTotal = dailyGrandTotal;
 
+    // Debug: verify dates and GTC compare data
+    console.log('[Data] Tổng số dòng:', data.length);
+    console.log('[Data] Tất cả ngày (sorted):', allDates);
+    console.log('[Data] Grand Total dates:', Object.keys(dailyGrandTotal).length);
+    if (allDates.length >= 2) {
+        const n1 = allDates[allDates.length - 1];
+        const n2 = allDates[allDates.length - 2];
+        console.log('[GTC Compare] N-1:', n1, '→', dailyGrandTotal[n1]);
+        console.log('[GTC Compare] N-2:', n2, '→', dailyGrandTotal[n2]);
+    }
+    console.log('[Data] Regions:', regions.map(r => r.name));
+
     renderKPIs();
     populateDateSelector();
     renderTable();
     renderCharts();
-    renderCompareTable();
 
-    document.getElementById('lastUpdate').innerText = "Cập nhật: " + new Date().toLocaleTimeString('vi-VN');
-    const btn = document.getElementById('refreshBtn');
-    if (btn) btn.classList.remove('spinning');
+    // Fetch Aging data then render compare table
+    fetchAgingData().then(() => {
+        renderCompareTable();
+        document.getElementById('lastUpdate').innerText = "Cập nhật: " + new Date().toLocaleTimeString('vi-VN');
+        const btn = document.getElementById('refreshBtn');
+        if (btn) btn.classList.remove('spinning');
+    });
 }
 
 function loadMockData() {
@@ -491,6 +506,63 @@ function renderCharts() {
     }
 }
 
+/* ===== AGING DATA (from Aging sheet) ===== */
+let AGING_DATA = { count: 0, date: '', history: {} };
+
+async function fetchAgingData() {
+    const agingUrl = 'https://docs.google.com/spreadsheets/d/1S296AhJ6MlXN1-JYFNzQG6Uu-35UN132ovHC4o8jGq4/export?format=csv&gid=1823144076';
+    
+    try {
+        const result = await new Promise((resolve, reject) => {
+            Papa.parse(agingUrl, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: (results) => resolve(results),
+                error: (err) => reject(err)
+            });
+        });
+
+        const rows = result.data;
+        const agingCount = rows.length;
+        
+        // Get today's date key (DD/MM/YYYY)
+        const today = new Date();
+        const todayKey = `${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${today.getFullYear()}`;
+
+        // Load history from localStorage
+        let history = {};
+        try {
+            const saved = localStorage.getItem('aging_history');
+            if (saved) history = JSON.parse(saved);
+        } catch(e) { history = {}; }
+
+        // Save today's count
+        history[todayKey] = agingCount;
+
+        // Keep only last 30 days of history
+        const keys = Object.keys(history).sort((a, b) => {
+            const [da, ma, ya] = a.split('/').map(Number);
+            const [db, mb, yb] = b.split('/').map(Number);
+            return new Date(ya, ma-1, da) - new Date(yb, mb-1, db);
+        });
+        if (keys.length > 30) {
+            keys.slice(0, keys.length - 30).forEach(k => delete history[k]);
+        }
+
+        // Save back to localStorage
+        localStorage.setItem('aging_history', JSON.stringify(history));
+
+        AGING_DATA = { count: agingCount, date: todayKey, history: history };
+
+        console.log('[Aging] Hôm nay:', todayKey, '→', agingCount, 'đơn');
+        console.log('[Aging] Lịch sử:', history);
+
+    } catch (error) {
+        console.error('[Aging] Lỗi tải dữ liệu Aging:', error);
+    }
+}
+
 /* ===== COMPARE TABLE (N-1 vs N-2) ===== */
 
 // Static data for non-GTC metrics (these come from different sheets)
@@ -518,12 +590,6 @@ const COMPARE_DATA_STATIC = [
         n1Date: '08/08/2026', n1Value: 4.97, n1Unit: '%',
         n2Date: '07/08/2026', n2Value: 5.12, n2Unit: '%',
         higherIsBetter: false, unit: '%'
-    },
-    {
-        name: 'Aging >5N',
-        n1Date: '09/08/2026', n1Value: 35, n1Unit: ' đơn',
-        n2Date: '08/08/2026', n2Value: 15, n2Unit: ' đơn',
-        higherIsBetter: false, unit: ' đơn'
     },
     {
         name: 'Rớt LC',
@@ -585,7 +651,41 @@ function buildCompareData() {
         }
     }
 
-    // Add static rows after GTC
+    // Build Aging >5N row dynamically
+    if (AGING_DATA.count > 0) {
+        const historyKeys = Object.keys(AGING_DATA.history).sort((a, b) => {
+            const [da, ma, ya] = a.split('/').map(Number);
+            const [db, mb, yb] = b.split('/').map(Number);
+            return new Date(ya, ma-1, da) - new Date(yb, mb-1, db);
+        });
+
+        const n1Key = historyKeys[historyKeys.length - 1]; // today (newest)
+        const n1Val = AGING_DATA.history[n1Key];
+
+        if (historyKeys.length >= 2) {
+            // We have previous day data
+            const n2Key = historyKeys[historyKeys.length - 2];
+            const n2Val = AGING_DATA.history[n2Key];
+            compareRows.push({
+                name: 'Aging >5N',
+                n1Date: n1Key, n1Value: n1Val, n1Unit: ' đơn',
+                n2Date: n2Key, n2Value: n2Val, n2Unit: ' đơn',
+                higherIsBetter: false, unit: ' đơn',
+                isDynamic: true
+            });
+        } else {
+            // First time — no previous data, show N-1 only
+            compareRows.push({
+                name: 'Aging >5N',
+                n1Date: n1Key, n1Value: n1Val, n1Unit: ' đơn',
+                n2Date: '—', n2Value: n1Val, n2Unit: ' đơn',
+                higherIsBetter: false, unit: ' đơn',
+                isDynamic: true
+            });
+        }
+    }
+
+    // Add static rows after dynamic ones
     return [...compareRows, ...COMPARE_DATA_STATIC];
 }
 
