@@ -25,36 +25,43 @@ let MOCK_DATA = {
     rawData: []             // keep raw rows for re-processing
 };
 
+function fetchCSV(url) {
+    return new Promise((resolve, reject) => {
+        Papa.parse(url, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => resolve(results.data),
+            error: (err) => reject(err)
+        });
+    });
+}
+
 async function fetchGoogleSheetData() {
-    const csvUrl = 'https://docs.google.com/spreadsheets/d/1S296AhJ6MlXN1-JYFNzQG6Uu-35UN132ovHC4o8jGq4/export?format=csv&gid=0';
+    const mainUrl = 'https://docs.google.com/spreadsheets/d/1S296AhJ6MlXN1-JYFNzQG6Uu-35UN132ovHC4o8jGq4/export?format=csv&gid=0';
+    const ca1Url = 'https://docs.google.com/spreadsheets/d/1S296AhJ6MlXN1-JYFNzQG6Uu-35UN132ovHC4o8jGq4/export?format=csv&gid=806361295';
+    const ca2Url = 'https://docs.google.com/spreadsheets/d/1S296AhJ6MlXN1-JYFNzQG6Uu-35UN132ovHC4o8jGq4/export?format=csv&gid=1395428739';
 
     const startTime = performance.now();
     updateLoadingStatus('Đang tải dữ liệu từ Google Sheets...');
 
     try {
-        Papa.parse(csvUrl, {
-            download: true,
-            header: true,
-            skipEmptyLines: true,
-            // NO worker: true — main thread parse is faster for ~200 rows
-            complete: function (results) {
-                const elapsed = Math.round(performance.now() - startTime);
-                updateLoadingStatus(`Dữ liệu tải xong (${elapsed}ms), đang xử lý...`);
-                console.log(`[Perf] Download + parse: ${elapsed}ms`);
-                processData(results.data);
-            },
-            error: function (error) {
-                console.error("Lỗi PapaParse:", error);
-                const btn = document.getElementById('refreshBtn');
-                if (btn) btn.classList.remove('spinning');
-                updateLoadingStatus('❌ Lỗi tải dữ liệu. Thử lại?');
-            }
-        });
+        const [mainData, ca1Data, ca2Data] = await Promise.all([
+            fetchCSV(mainUrl),
+            fetchCSV(ca1Url),
+            fetchCSV(ca2Url)
+        ]);
+        
+        const elapsed = Math.round(performance.now() - startTime);
+        updateLoadingStatus(`Dữ liệu tải xong (${elapsed}ms), đang xử lý...`);
+        console.log(`[Perf] Download + parse: ${elapsed}ms`);
+        
+        processData(mainData, ca1Data, ca2Data);
     } catch (error) {
         console.error("Lỗi khi tải dữ liệu:", error);
         const btn = document.getElementById('refreshBtn');
         if (btn) btn.classList.remove('spinning');
-        updateLoadingStatus('❌ Lỗi: ' + error.message);
+        updateLoadingStatus('❌ Lỗi: ' + (error.message || 'Không thể tải dữ liệu'));
     }
 }
 
@@ -109,9 +116,9 @@ function processData(data) {
     let dailyGrandTotal = {}; // { dateKey: { volume, gtcRate, returnRate, leadtime } }
     let allDateSet = new Set();
 
-    MOCK_DATA.rawData = data;
+    MOCK_DATA.rawData = mainData;
 
-    data.forEach(row => {
+    mainData.forEach(row => {
         let isGrandTotal = (row['Chi tiết'] === 'Grand Total' || !row['Cấp Quản Lý'] || !row['Cấp Quản Lý'].trim());
         let time = row['Time'];
         let vol = parseNum(row['Volume']);
@@ -229,6 +236,75 @@ function processData(data) {
     MOCK_DATA.dailyRegions = dailyRegionsProcessed;
     MOCK_DATA.dailyGrandTotal = dailyGrandTotal;
 
+    // Helper to parse region data from the extra sheets
+    const parseRegionsFromData = (sheetData) => {
+        let rMap = {};
+        let dRegions = {};
+        
+        sheetData.forEach(row => {
+            let isGrandTotal = (row['Chi tiết'] === 'Grand Total' || !row['Cấp Quản Lý'] || !row['Cấp Quản Lý'].trim());
+            let time = row['Time'];
+            if (!time || isGrandTotal) return;
+            
+            let vol = parseNum(row['Volume']);
+            let gtcRate = parseNum(row['% GTC']);
+            let deliv = vol * gtcRate;
+            let ganRate = parseNum(row['% Gán']);
+            let gan = vol * ganRate;
+            let region = row['Chi tiết'];
+            if (!region) return;
+
+            if (!rMap[region]) rMap[region] = { name: region, total: 0, delivered: 0, gan: 0 };
+            rMap[region].total += vol;
+            rMap[region].delivered += deliv;
+            rMap[region].gan += gan;
+
+            if (!dRegions[time]) dRegions[time] = {};
+            if (!dRegions[time][region]) {
+                dRegions[time][region] = { name: region, total: 0, delivered: 0, gan: 0 };
+            }
+            dRegions[time][region].total += vol;
+            dRegions[time][region].delivered += deliv;
+            dRegions[time][region].gan += gan;
+        });
+
+        let allRegs = Object.values(rMap).map(r => {
+            r.rate = r.total ? (r.delivered / r.total * 100) : 0;
+            r.ganRate = r.total ? (r.gan / r.total * 100) : 0;
+            r.gtcCount = Math.round(r.delivered);
+            r.total = Math.round(r.total);
+            r.delivered = Math.round(r.delivered);
+            r.rate = parseFloat(r.rate.toFixed(1));
+            r.ganRate = parseFloat(r.ganRate.toFixed(1));
+            return r;
+        });
+
+        let dRegsProcessed = {};
+        for (let dateKey of allDates) {
+            if (dRegions[dateKey]) {
+                dRegsProcessed[dateKey] = Object.values(dRegions[dateKey]).map(r => {
+                    r.rate = r.total ? (r.delivered / r.total * 100) : 0;
+                    r.ganRate = r.total ? (r.gan / r.total * 100) : 0;
+                    r.gtcCount = Math.round(r.delivered);
+                    r.total = Math.round(r.total);
+                    r.delivered = Math.round(r.delivered);
+                    r.rate = parseFloat(r.rate.toFixed(1));
+                    r.ganRate = parseFloat(r.ganRate.toFixed(1));
+                    return r;
+                });
+            }
+        }
+        return { regions: allRegs, dailyRegions: dRegsProcessed };
+    };
+
+    const ca1Parsed = parseRegionsFromData(ca1Data);
+    const ca2Parsed = parseRegionsFromData(ca2Data);
+
+    MOCK_DATA.regionsCa1 = ca1Parsed.regions;
+    MOCK_DATA.dailyRegionsCa1 = ca1Parsed.dailyRegions;
+    MOCK_DATA.regionsCa2 = ca2Parsed.regions;
+    MOCK_DATA.dailyRegionsCa2 = ca2Parsed.dailyRegions;
+
     // Debug: verify dates and GTC compare data
     console.log('[Data] Tổng số dòng:', data.length);
     console.log('[Data] Tất cả ngày (sorted):', allDates);
@@ -324,18 +400,30 @@ function populateDateSelector() {
 }
 
 function renderTableByDate(dateKey) {
-    const tbody = document.querySelector('#dataTableOverview tbody');
-    if (!tbody) return;
-
-    let regionsToRender;
-
-    if (dateKey === 'all') {
-        regionsToRender = MOCK_DATA.regions;
-    } else {
-        regionsToRender = MOCK_DATA.dailyRegions[dateKey] || [];
+    // 1. Table Overview
+    const tbodyOv = document.querySelector('#dataTableOverview tbody');
+    if (tbodyOv) {
+        let regionsToRender = (dateKey === 'all') ? MOCK_DATA.regions : (MOCK_DATA.dailyRegions[dateKey] || []);
+        renderTbody(tbodyOv, regionsToRender);
     }
+    
+    // 2. Table Ca 1
+    const tbodyCa1 = document.querySelector('#dataTableCa1 tbody');
+    if (tbodyCa1) {
+        let regionsToRender = (dateKey === 'all') ? MOCK_DATA.regionsCa1 : (MOCK_DATA.dailyRegionsCa1[dateKey] || []);
+        renderTbody(tbodyCa1, regionsToRender);
+    }
+    
+    // 3. Table Ca 2
+    const tbodyCa2 = document.querySelector('#dataTableCa2 tbody');
+    if (tbodyCa2) {
+        let regionsToRender = (dateKey === 'all') ? MOCK_DATA.regionsCa2 : (MOCK_DATA.dailyRegionsCa2[dateKey] || []);
+        renderTbody(tbodyCa2, regionsToRender);
+    }
+}
 
-    if (regionsToRender.length === 0) {
+function renderTbody(tbody, regionsToRender) {
+    if (!regionsToRender || regionsToRender.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--text-sub);">Không có dữ liệu cho ngày đã chọn</td></tr>`;
         return;
     }

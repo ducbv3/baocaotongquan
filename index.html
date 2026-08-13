@@ -13,7 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <!-- CSS -->
-    <link rel="stylesheet" href="styles.css?v=20260813c">
+    <link rel="stylesheet" href="styles.css?v=20260813d">
 </head>
 
 <body>
@@ -143,11 +143,8 @@
             </div>
 
             <!-- Bảng dữ liệu -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <div class="card-icon">📋</div> Dữ liệu chi tiết Tỉnh/Thành phố
-                    </div>
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header" style="justify-content: flex-end;">
                     <div class="card-header-actions">
                         <div class="date-selector-wrap">
                             <label class="date-selector-label" for="dateSelector">📅 Chọn ngày:</label>
@@ -156,6 +153,14 @@
                                 <!-- JS will populate date options -->
                             </select>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon">📋</div> Dữ liệu chi tiết Tỉnh/Thành phố (Tổng hợp)
                     </div>
                 </div>
                 <div class="table-wrap">
@@ -175,11 +180,59 @@
                     </table>
                 </div>
             </div>
+
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon">📋</div> Dữ liệu GTC ca 1, tồn
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table id="dataTableCa1">
+                        <thead>
+                            <tr>
+                                <th>Khu vực</th>
+                                <th>Tổng Đơn</th>
+                                <th>% Gán</th>
+                                <th>% GTC</th>
+                                <th>Số đơn GTC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- JS render -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon">📋</div> Dữ liệu GTC ca 2
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table id="dataTableCa2">
+                        <thead>
+                            <tr>
+                                <th>Khu vực</th>
+                                <th>Tổng Đơn</th>
+                                <th>% Gán</th>
+                                <th>% GTC</th>
+                                <th>Số đơn GTC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- JS render -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </main>
 
     <!-- JS -->
-    <script src="app.js?v=20260813c"></script>
+    <script src="app.js?v=20260813d"></script>
 </body>
 
 </html>
