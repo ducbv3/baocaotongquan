@@ -88,7 +88,7 @@ function showLoadingState() {
     const dataTbody = document.querySelector('#dataTableOverview tbody');
     if (dataTbody) {
         dataTbody.innerHTML = [1,2,3,4,5,6].map(() => `
-            <tr><td colspan="5"><div class="skeleton-line" style="width:100%;height:14px;"></div></td></tr>
+            <tr><td colspan="7"><div class="skeleton-line" style="width:100%;height:14px;"></div></td></tr>
         `).join('');
     }
 }
@@ -413,43 +413,78 @@ function populateDateSelector() {
 }
 
 function renderTableByDate(dateKey) {
+    let prevRegionsOv = [];
+    let prevRegionsCa1 = [];
+    let prevRegionsCa2 = [];
+
+    if (dateKey !== 'all') {
+        const idx = MOCK_DATA.allDates.indexOf(dateKey);
+        if (idx > 0) {
+            const prevDateKey = MOCK_DATA.allDates[idx - 1];
+            prevRegionsOv = MOCK_DATA.dailyRegions[prevDateKey] || [];
+            prevRegionsCa1 = MOCK_DATA.dailyRegionsCa1[prevDateKey] || [];
+            prevRegionsCa2 = MOCK_DATA.dailyRegionsCa2[prevDateKey] || [];
+        }
+    }
+
     // 1. Table Overview
     const tbodyOv = document.querySelector('#dataTableOverview tbody');
     if (tbodyOv) {
         let regionsToRender = (dateKey === 'all') ? MOCK_DATA.regions : (MOCK_DATA.dailyRegions[dateKey] || []);
-        renderTbody(tbodyOv, regionsToRender);
+        renderTbody(tbodyOv, regionsToRender, prevRegionsOv);
     }
     
     // 2. Table Ca 1
     const tbodyCa1 = document.querySelector('#dataTableCa1 tbody');
     if (tbodyCa1) {
         let regionsToRender = (dateKey === 'all') ? MOCK_DATA.regionsCa1 : (MOCK_DATA.dailyRegionsCa1[dateKey] || []);
-        renderTbody(tbodyCa1, regionsToRender);
+        renderTbody(tbodyCa1, regionsToRender, prevRegionsCa1);
     }
     
     // 3. Table Ca 2
     const tbodyCa2 = document.querySelector('#dataTableCa2 tbody');
     if (tbodyCa2) {
         let regionsToRender = (dateKey === 'all') ? MOCK_DATA.regionsCa2 : (MOCK_DATA.dailyRegionsCa2[dateKey] || []);
-        renderTbody(tbodyCa2, regionsToRender);
+        renderTbody(tbodyCa2, regionsToRender, prevRegionsCa2);
     }
 }
 
-function renderTbody(tbody, regionsToRender) {
+function renderTbody(tbody, regionsToRender, prevRegions = []) {
     if (!regionsToRender || regionsToRender.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--text-sub);">Không có dữ liệu cho ngày đã chọn</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-sub);">Không có dữ liệu cho ngày đã chọn</td></tr>`;
         return;
     }
 
     tbody.innerHTML = regionsToRender.map(r => {
         let gtcCls = r.rate >= 93 ? 'g' : (r.rate >= 72 ? 'm' : 'b');
         let ganCls = r.ganRate >= 95 ? 'g' : (r.ganRate >= 85 ? 'm' : 'b');
+
+        let diffGanHtml = '-';
+        let diffGtcHtml = '-';
+
+        let prevR = prevRegions.find(pr => pr.name === r.name);
+        if (prevR) {
+            let diffGan = r.ganRate - prevR.ganRate;
+            let diffGtc = r.rate - prevR.rate;
+            
+            let ganColor = diffGan > 0 ? '#059669' : (diffGan < 0 ? '#DC2626' : 'var(--text-sub)');
+            let gtcColor = diffGtc > 0 ? '#059669' : (diffGtc < 0 ? '#DC2626' : 'var(--text-sub)');
+            
+            let ganSign = diffGan > 0 ? '+' : '';
+            let gtcSign = diffGtc > 0 ? '+' : '';
+            
+            diffGanHtml = `<span style="color:${ganColor}; font-size:0.9em; font-weight:600">${ganSign}${diffGan.toFixed(1)}%</span>`;
+            diffGtcHtml = `<span style="color:${gtcColor}; font-size:0.9em; font-weight:600">${gtcSign}${diffGtc.toFixed(1)}%</span>`;
+        }
+
         return `
             <tr>
                 <td style="font-weight:600">${r.name}</td>
                 <td>${fmt(r.total)}</td>
                 <td><span class="pct ${ganCls}">${r.ganRate}%</span></td>
+                <td>${diffGanHtml}</td>
                 <td><span class="pct ${gtcCls}">${r.rate}%</span></td>
+                <td>${diffGtcHtml}</td>
                 <td>${fmt(r.gtcCount)}</td>
             </tr>
         `;
@@ -474,7 +509,9 @@ function renderTable() {
                     <td style="font-weight:600">${r.name}</td>
                     <td>${fmt(r.total)}</td>
                     <td><span class="pct ${ganCls}">${r.ganRate}%</span></td>
+                    <td>-</td>
                     <td><span class="pct ${gtcCls}">${r.rate}%</span></td>
+                    <td>-</td>
                     <td>${fmt(r.gtcCount)}</td>
                 </tr>
             `;
