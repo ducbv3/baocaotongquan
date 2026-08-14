@@ -544,3 +544,47 @@ tr:hover td { background: #F1F6FF; }
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
 }
+
+/* =========================================
+   HORIZONTAL TABLE STYLES
+========================================= */
+.table-wrap {
+    overflow-x: auto;
+    position: relative;
+    max-width: 100%;
+}
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.sticky-col {
+    position: sticky;
+}
+th.sticky-col {
+    background: #FFF0E6;
+}
+td.sticky-col {
+    background: #fff;
+}
+
+/* Pills and colors */
+.pill {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.9em;
+}
+.pill-g { background-color: #dcfce7; color: #166534; }
+.pill-y { background-color: #fef9c3; color: #a16207; }
+.pill-r { background-color: #fee2e2; color: #991b1b; }
+
+.txt-g { color: #166534; }
+.txt-y { color: #a16207; }
+.txt-r { color: #991b1b; }
+
+th.sub-header {
+    font-size: 0.85em;
+    color: var(--text-sub);
+    padding: 8px 12px;
+}

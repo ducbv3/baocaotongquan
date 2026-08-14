@@ -154,7 +154,7 @@ function processData(mainData, ca1Data, ca2Data) {
 
             // Aggregate for overview
             if (!regionMap[region]) {
-                regionMap[region] = { name: region, total: 0, delivered: 0, gan: 0 };
+                regionMap[region] = { name: region, am: row['Cấp Quản Lý'] || '', total: 0, delivered: 0, gan: 0 };
             }
             regionMap[region].total += vol;
             regionMap[region].delivered += deliv;
@@ -163,7 +163,7 @@ function processData(mainData, ca1Data, ca2Data) {
             // Per-date region data
             if (!dailyRegions[time]) dailyRegions[time] = {};
             if (!dailyRegions[time][region]) {
-                dailyRegions[time][region] = { name: region, total: 0, delivered: 0, gan: 0 };
+                dailyRegions[time][region] = { name: region, am: row['Cấp Quản Lý'] || '', total: 0, delivered: 0, gan: 0 };
             }
             dailyRegions[time][region].total += vol;
             dailyRegions[time][region].delivered += deliv;
@@ -195,6 +195,8 @@ function processData(mainData, ca1Data, ca2Data) {
         r.delivered = Math.round(r.delivered);
         r.rate = parseFloat(r.rate.toFixed(1));
         r.ganRate = parseFloat(r.ganRate.toFixed(1));
+        // Add (HBI) prefix if missing
+        if (!r.name.startsWith('(HBI)')) r.name = '(HBI) ' + r.name;
         return r;
     });
 
@@ -217,6 +219,7 @@ function processData(mainData, ca1Data, ca2Data) {
                 r.delivered = Math.round(r.delivered);
                 r.rate = parseFloat(r.rate.toFixed(1));
                 r.ganRate = parseFloat(r.ganRate.toFixed(1));
+                if (!r.name.startsWith('(HBI)')) r.name = '(HBI) ' + r.name;
                 return r;
             });
         }
@@ -264,14 +267,14 @@ function processData(mainData, ca1Data, ca2Data) {
             let region = row['Chi tiết'];
             if (!region) return;
 
-            if (!rMap[region]) rMap[region] = { name: region, total: 0, delivered: 0, gan: 0 };
+            if (!rMap[region]) rMap[region] = { name: region, am: row['Cấp Quản Lý'] || '', total: 0, delivered: 0, gan: 0 };
             rMap[region].total += vol;
             rMap[region].delivered += deliv;
             rMap[region].gan += gan;
 
             if (!dRegions[time]) dRegions[time] = {};
             if (!dRegions[time][region]) {
-                dRegions[time][region] = { name: region, total: 0, delivered: 0, gan: 0 };
+                dRegions[time][region] = { name: region, am: row['Cấp Quản Lý'] || '', total: 0, delivered: 0, gan: 0 };
             }
             dRegions[time][region].total += vol;
             dRegions[time][region].delivered += deliv;
@@ -286,6 +289,7 @@ function processData(mainData, ca1Data, ca2Data) {
             r.delivered = Math.round(r.delivered);
             r.rate = parseFloat(r.rate.toFixed(1));
             r.ganRate = parseFloat(r.ganRate.toFixed(1));
+            if (!r.name.startsWith('(HBI)')) r.name = '(HBI) ' + r.name;
             return r;
         });
 
@@ -300,6 +304,7 @@ function processData(mainData, ca1Data, ca2Data) {
                     r.delivered = Math.round(r.delivered);
                     r.rate = parseFloat(r.rate.toFixed(1));
                     r.ganRate = parseFloat(r.ganRate.toFixed(1));
+                    if (!r.name.startsWith('(HBI)')) r.name = '(HBI) ' + r.name;
                     return r;
                 });
             }
@@ -413,109 +418,111 @@ function populateDateSelector() {
 }
 
 function renderTableByDate(dateKey) {
-    let prevRegionsOv = [];
-    let prevRegionsCa1 = [];
-    let prevRegionsCa2 = [];
-
-    if (dateKey !== 'all') {
+    let targetDates = [];
+    if (dateKey === 'all') {
+        targetDates = MOCK_DATA.allDates.slice(-3).reverse();
+    } else {
         const idx = MOCK_DATA.allDates.indexOf(dateKey);
-        if (idx > 0) {
-            const prevDateKey = MOCK_DATA.allDates[idx - 1];
-            prevRegionsOv = MOCK_DATA.dailyRegions[prevDateKey] || [];
-            prevRegionsCa1 = MOCK_DATA.dailyRegionsCa1[prevDateKey] || [];
-            prevRegionsCa2 = MOCK_DATA.dailyRegionsCa2[prevDateKey] || [];
+        if (idx !== -1) {
+            targetDates.push(MOCK_DATA.allDates[idx]);
+            if (idx - 1 >= 0) targetDates.push(MOCK_DATA.allDates[idx - 1]);
+            if (idx - 2 >= 0) targetDates.push(MOCK_DATA.allDates[idx - 2]);
         }
     }
 
-    // 1. Table Overview
-    const tbodyOv = document.querySelector('#dataTableOverview tbody');
-    if (tbodyOv) {
-        let regionsToRender = (dateKey === 'all') ? MOCK_DATA.regions : (MOCK_DATA.dailyRegions[dateKey] || []);
-        renderTbody(tbodyOv, regionsToRender, prevRegionsOv);
-    }
+    const tableOv = document.querySelector('#dataTableOverview');
+    if (tableOv) renderTableHorizontal(tableOv, targetDates, MOCK_DATA.dailyRegions, MOCK_DATA.regions);
     
-    // 2. Table Ca 1
-    const tbodyCa1 = document.querySelector('#dataTableCa1 tbody');
-    if (tbodyCa1) {
-        let regionsToRender = (dateKey === 'all') ? MOCK_DATA.regionsCa1 : (MOCK_DATA.dailyRegionsCa1[dateKey] || []);
-        renderTbody(tbodyCa1, regionsToRender, prevRegionsCa1);
-    }
+    const tableCa1 = document.querySelector('#dataTableCa1');
+    if (tableCa1) renderTableHorizontal(tableCa1, targetDates, MOCK_DATA.dailyRegionsCa1, MOCK_DATA.regionsCa1);
     
-    // 3. Table Ca 2
-    const tbodyCa2 = document.querySelector('#dataTableCa2 tbody');
-    if (tbodyCa2) {
-        let regionsToRender = (dateKey === 'all') ? MOCK_DATA.regionsCa2 : (MOCK_DATA.dailyRegionsCa2[dateKey] || []);
-        renderTbody(tbodyCa2, regionsToRender, prevRegionsCa2);
-    }
+    const tableCa2 = document.querySelector('#dataTableCa2');
+    if (tableCa2) renderTableHorizontal(tableCa2, targetDates, MOCK_DATA.dailyRegionsCa2, MOCK_DATA.regionsCa2);
 }
 
-function renderTbody(tbody, regionsToRender, prevRegions = []) {
-    if (!regionsToRender || regionsToRender.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-sub);">Không có dữ liệu cho ngày đã chọn</td></tr>`;
-        return;
+function renderTableHorizontal(tableNode, targetDates, dailyRegionsData, allRegionsData) {
+    let theadHtml = '<thead><tr>';
+    theadHtml += '<th class="sticky-col" style="left:0; z-index:3; min-width: 40px; background: #FFF0E6;">STT</th>';
+    theadHtml += '<th class="sticky-col" style="left:40px; z-index:3; min-width: 150px; background: #FFF0E6;">BƯU CỤC</th>';
+    theadHtml += '<th class="sticky-col" style="left:190px; z-index:3; min-width: 120px; background: #FFF0E6; border-right: 1px solid #e2e8f0;">AM</th>';
+
+    targetDates.forEach(dKey => {
+        const parts = dKey.split(' - ');
+        const dateParts = parts[0].split('-');
+        let dayStr = parts.length > 1 ? parts[1].trim().toUpperCase() : '';
+        if (dayStr === 'CHỦ NHẬT') dayStr = 'CN';
+        const formatted = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]} (${dayStr})`;
+        theadHtml += `<th colspan="4" style="text-align:center; border-right: 1px solid #e2e8f0; background: #fff;">${formatted}</th>`;
+    });
+    theadHtml += '</tr><tr>';
+    theadHtml += '<th class="sticky-col sub-header" style="left:0; z-index:3; background: #FFF0E6;"></th>';
+    theadHtml += '<th class="sticky-col sub-header" style="left:40px; z-index:3; background: #FFF0E6;"></th>';
+    theadHtml += '<th class="sticky-col sub-header" style="left:190px; z-index:3; background: #FFF0E6; border-right: 1px solid #e2e8f0;"></th>';
+
+    targetDates.forEach(() => {
+        theadHtml += '<th class="sub-header" style="min-width:60px; background: #fff;">VOL</th>';
+        theadHtml += '<th class="sub-header" style="min-width:60px; background: #fff;">%GÁN</th>';
+        theadHtml += '<th class="sub-header" style="min-width:75px; background: #fff;">%GTC</th>';
+        theadHtml += '<th class="sub-header" style="min-width:60px; border-right: 1px solid #e2e8f0; background: #fff;">GTC</th>';
+    });
+    theadHtml += '</tr></thead>';
+
+    let tbodyHtml = '<tbody>';
+    let regionNames = [];
+    if (targetDates.length > 0 && dailyRegionsData[targetDates[0]]) {
+        regionNames = dailyRegionsData[targetDates[0]].map(r => r.name);
+    } else if (allRegionsData && allRegionsData.length > 0) {
+        regionNames = allRegionsData.map(r => r.name);
     }
+    
+    if (regionNames.length === 0) {
+        tbodyHtml += `<tr><td colspan="${3 + targetDates.length * 4}" style="text-align:center; padding:24px;">Không có dữ liệu</td></tr>`;
+    } else {
+        regionNames.forEach((rName, idx) => {
+            let amName = '';
+            for (let dKey of targetDates) {
+                let rData = dailyRegionsData[dKey] ? dailyRegionsData[dKey].find(r => r.name === rName) : null;
+                if (rData && rData.am) {
+                    amName = rData.am;
+                    break;
+                }
+            }
+            if (!amName && allRegionsData) {
+                let rData = allRegionsData.find(r => r.name === rName);
+                if (rData && rData.am) amName = rData.am;
+            }
 
-    tbody.innerHTML = regionsToRender.map(r => {
-        let gtcCls = r.rate >= 93 ? 'g' : (r.rate >= 72 ? 'm' : 'b');
-        let ganCls = r.ganRate >= 95 ? 'g' : (r.ganRate >= 85 ? 'm' : 'b');
+            tbodyHtml += '<tr>';
+            tbodyHtml += `<td class="sticky-col" style="left:0; z-index:1; background: #fff; text-align:center; font-size:0.9em; color:var(--text-sub);">${idx + 1}</td>`;
+            tbodyHtml += `<td class="sticky-col" style="left:40px; z-index:1; background: #fff; font-weight:600; color:var(--text-main);">${rName}</td>`;
+            tbodyHtml += `<td class="sticky-col" style="left:190px; z-index:1; background: #fff; color:var(--text-sub); font-size:0.9em; border-right: 1px solid #e2e8f0;">${amName}</td>`;
 
-        let diffGanHtml = '-';
-        let diffGtcHtml = '-';
-
-        let prevR = prevRegions.find(pr => pr.name === r.name);
-        if (prevR) {
-            let diffGan = r.ganRate - prevR.ganRate;
-            let diffGtc = r.rate - prevR.rate;
-            
-            let ganColor = diffGan > 0 ? '#059669' : (diffGan < 0 ? '#DC2626' : 'var(--text-sub)');
-            let gtcColor = diffGtc > 0 ? '#059669' : (diffGtc < 0 ? '#DC2626' : 'var(--text-sub)');
-            
-            let ganSign = diffGan > 0 ? '+' : '';
-            let gtcSign = diffGtc > 0 ? '+' : '';
-            
-            diffGanHtml = `<span style="color:${ganColor}; font-size:0.9em; font-weight:600">${ganSign}${diffGan.toFixed(1)}%</span>`;
-            diffGtcHtml = `<span style="color:${gtcColor}; font-size:0.9em; font-weight:600">${gtcSign}${diffGtc.toFixed(1)}%</span>`;
-        }
-
-        return `
-            <tr>
-                <td style="font-weight:600">${r.name}</td>
-                <td>${fmt(r.total)}</td>
-                <td><span class="pct ${ganCls}">${r.ganRate}%</span></td>
-                <td>${diffGanHtml}</td>
-                <td><span class="pct ${gtcCls}">${r.rate}%</span></td>
-                <td>${diffGtcHtml}</td>
-                <td>${fmt(r.gtcCount)}</td>
-            </tr>
-        `;
-    }).join('');
+            targetDates.forEach(dKey => {
+                let rData = dailyRegionsData[dKey] ? dailyRegionsData[dKey].find(r => r.name === rName) : null;
+                if (rData) {
+                    let gtcCls = rData.rate >= 70 ? 'pill-g' : (rData.rate >= 50 ? 'pill-y' : 'pill-r');
+                    let txtCls = rData.rate >= 70 ? 'txt-g' : (rData.rate >= 50 ? 'txt-y' : 'txt-r');
+                    
+                    tbodyHtml += `<td>${fmt(rData.total)}</td>`;
+                    tbodyHtml += `<td>${rData.ganRate.toFixed(1)}%</td>`;
+                    tbodyHtml += `<td><span class="pill ${gtcCls}">${rData.rate.toFixed(1)}%</span></td>`;
+                    tbodyHtml += `<td style="border-right: 1px solid #e2e8f0; font-weight:700;" class="${txtCls}">${fmt(rData.gtcCount)}</td>`;
+                } else {
+                    tbodyHtml += `<td>-</td><td>-</td><td>-</td><td style="border-right: 1px solid #e2e8f0;">-</td>`;
+                }
+            });
+            tbodyHtml += '</tr>';
+        });
+    }
+    tbodyHtml += '</tbody>';
+    
+    tableNode.innerHTML = theadHtml + tbodyHtml;
 }
 
 function renderTable() {
-    // Default: render by the currently selected date
     const selector = document.getElementById('dateSelector');
     if (selector) {
         renderTableByDate(selector.value);
-    } else {
-        // Fallback: render all aggregated
-        const tbody = document.querySelector('#dataTableOverview tbody');
-        if (!tbody) return;
-
-        tbody.innerHTML = MOCK_DATA.regions.map(r => {
-            let gtcCls = r.rate >= 93 ? 'g' : (r.rate >= 72 ? 'm' : 'b');
-            let ganCls = r.ganRate >= 95 ? 'g' : (r.ganRate >= 85 ? 'm' : 'b');
-            return `
-                <tr>
-                    <td style="font-weight:600">${r.name}</td>
-                    <td>${fmt(r.total)}</td>
-                    <td><span class="pct ${ganCls}">${r.ganRate}%</span></td>
-                    <td>-</td>
-                    <td><span class="pct ${gtcCls}">${r.rate}%</span></td>
-                    <td>-</td>
-                    <td>${fmt(r.gtcCount)}</td>
-                </tr>
-            `;
-        }).join('');
     }
 }
 
